@@ -10,8 +10,17 @@ export type User = {
     [key: string]: unknown;
 };
 
+export type UserRole =
+    | 'super_admin'
+    | 'clinic_admin'
+    | 'doctor'
+    | 'practitioner'
+    | 'lab_staff'
+    | 'patient';
+
 export type Auth = {
     user: User;
+    role: UserRole | null;
 };
 
 export type Passkey = {

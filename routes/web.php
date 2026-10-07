@@ -6,6 +6,13 @@ Route::inertia('/', 'Welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+
+    Route::middleware('role:super_admin,clinic_admin')
+        ->prefix('admin')
+        ->name('admin.')
+        ->group(function () {
+            Route::inertia('/', 'admin/Dashboard')->name('dashboard');
+        });
 });
 
 require __DIR__.'/settings.php';

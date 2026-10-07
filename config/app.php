@@ -123,4 +123,20 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Development Administrator
+    |--------------------------------------------------------------------------
+    |
+    | Credentials for the Super Admin account created by the DevAdminSeeder.
+    | The seeder only runs in the "local" environment.
+    |
+    */
+
+    'dev_admin' => [
+        'name' => env('DEV_ADMIN_NAME', 'Development Admin'),
+        'email' => env('DEV_ADMIN_EMAIL', 'admin@longevity.test'),
+        'password' => env('DEV_ADMIN_PASSWORD', 'password'),
+    ],
+
 ];
