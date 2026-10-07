@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditLogController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
@@ -12,6 +13,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.')
         ->group(function () {
             Route::inertia('/', 'admin/Dashboard')->name('dashboard');
+
+            Route::get('audit-logs', [AuditLogController::class, 'index'])
+                ->middleware('role:super_admin')
+                ->name('audit-logs.index');
         });
 });
 

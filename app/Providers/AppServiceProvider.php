@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Audit\AuthenticationEventSubscriber;
 use App\Enums\UserRole;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -28,6 +30,15 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureAuthorization();
+        $this->configureAuditing();
+    }
+
+    /**
+     * Record security-relevant events in the audit log.
+     */
+    protected function configureAuditing(): void
+    {
+        Event::subscribe(AuthenticationEventSubscriber::class);
     }
 
     /**

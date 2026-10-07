@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { dashboard } from '@/routes/admin';
+import { index as auditLogs } from '@/routes/admin/audit-logs';
+
+const page = usePage();
 
 defineOptions({
     layout: {
@@ -22,5 +25,12 @@ defineOptions({
         <p class="text-sm text-muted-foreground">
             Only Super Admins and Clinic Admins can see this page.
         </p>
+        <Link
+            v-if="page.props.auth.role === 'super_admin'"
+            :href="auditLogs()"
+            class="text-sm font-medium underline underline-offset-4"
+        >
+            View the audit log
+        </Link>
     </div>
 </template>

@@ -1,5 +1,8 @@
 <?php
 
+use App\Enums\AuditEvent;
+use App\Models\AuditLog;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,4 +50,14 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Get the audit entries recorded for the given event, oldest first.
+ *
+ * @return Collection<int, AuditLog>
+ */
+function auditEntries(AuditEvent $event)
+{
+    return AuditLog::where('event', $event)->orderBy('id')->get();
 }
