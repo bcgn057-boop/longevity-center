@@ -6,6 +6,8 @@ import {
     LayoutGrid,
     ScrollText,
     ShieldCheck,
+    UserRound,
+    Users,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -21,9 +23,10 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
+import { dashboard, myProfile } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as auditLogs } from '@/routes/admin/audit-logs';
+import { index as patientsIndex } from '@/routes/patients';
 import type { NavItem } from '@/types';
 
 const page = usePage();
@@ -38,6 +41,27 @@ const mainNavItems = computed<NavItem[]>(() => {
     ];
 
     const role = page.props.auth.role;
+
+    if (
+        role === 'super_admin' ||
+        role === 'clinic_admin' ||
+        role === 'doctor' ||
+        role === 'practitioner'
+    ) {
+        items.push({
+            title: 'Patients',
+            href: patientsIndex(),
+            icon: Users,
+        });
+    }
+
+    if (role === 'patient') {
+        items.push({
+            title: 'My profile',
+            href: myProfile(),
+            icon: UserRound,
+        });
+    }
 
     if (role === 'super_admin' || role === 'clinic_admin') {
         items.push({

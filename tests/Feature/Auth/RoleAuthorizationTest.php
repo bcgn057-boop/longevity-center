@@ -72,8 +72,9 @@ test('gates grant access according to role', function (UserRole $role, array $ex
             ->toBe($allowed, "{$role->value} / {$ability}");
     }
 })->with([
+    // The Super Admin bypass deliberately excludes clinical abilities.
     'super admin' => [UserRole::SuperAdmin, [
-        'access-admin' => true, 'access-clinical' => true, 'access-lab' => true, 'access-patient-portal' => true,
+        'access-admin' => true, 'access-clinical' => false, 'access-lab' => true, 'access-patient-portal' => true,
     ]],
     'clinic admin' => [UserRole::ClinicAdmin, [
         'access-admin' => true, 'access-clinical' => false, 'access-lab' => false, 'access-patient-portal' => false,

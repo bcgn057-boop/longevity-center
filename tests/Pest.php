@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\AuditEvent;
+use App\Enums\UserRole;
 use App\Models\AuditLog;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -60,4 +62,35 @@ function something()
 function auditEntries(AuditEvent $event)
 {
     return AuditLog::where('event', $event)->orderBy('id')->get();
+}
+
+/**
+ * Create a verified user with the given role.
+ */
+function userWithRole(UserRole $role): User
+{
+    return User::factory()->withRole($role)->create();
+}
+
+/**
+ * A valid patient create/update payload.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function patientPayload(array $overrides = []): array
+{
+    return [
+        'first_name' => 'Ada',
+        'last_name' => 'Lovelace',
+        'sex' => 'female',
+        'date_of_birth' => '1985-12-10',
+        'email' => 'ada@example.com',
+        'phone' => '+14155550123',
+        'address' => '12 Analytical Way',
+        'emergency_contacts' => [
+            ['name' => 'Charles Babbage', 'relationship' => 'Friend', 'phone' => '+14155550199', 'email' => 'charles@example.com'],
+        ],
+        ...$overrides,
+    ];
 }

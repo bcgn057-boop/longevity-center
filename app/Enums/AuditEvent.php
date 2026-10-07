@@ -31,6 +31,16 @@ enum AuditEvent: string
     // Authorization
     case AccessDenied = 'access.denied';
 
+    // Patient records
+    case PatientCreated = 'patient.created';
+    case PatientViewed = 'patient.viewed';
+    case PatientUpdated = 'patient.updated';
+    case PatientArchived = 'patient.archived';
+    case PatientRestored = 'patient.restored';
+    case PatientSearched = 'patient.searched';
+    case PatientAccountLinked = 'patient.account_linked';
+    case PatientAccountUnlinked = 'patient.account_unlinked';
+
     // Audit log access
     case AuditLogViewed = 'audit.viewed';
 }

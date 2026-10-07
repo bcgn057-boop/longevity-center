@@ -16,6 +16,13 @@ use Illuminate\Validation\Rules\Password;
 class AppServiceProvider extends ServiceProvider
 {
     /**
+     * Abilities the Super Admin bypass does not grant.
+     *
+     * @var array<int, string>
+     */
+    private const CLINICAL_ABILITIES = ['access-clinical', 'viewMedical', 'updateMedical'];
+
+    /**
      * Register any application services.
      */
     public function register(): void
@@ -46,8 +53,10 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureAuthorization(): void
     {
-        // Super Admins pass every gate and policy check.
-        Gate::before(fn (User $user): ?bool => $user->hasRole(UserRole::SuperAdmin) ? true : null);
+        // Super Admins pass every gate and policy check except clinical ones:
+        // they manage the system but only read medical data with a clinical role.
+        Gate::before(fn (User $user, string $ability): ?bool => $user->hasRole(UserRole::SuperAdmin)
+            && ! in_array($ability, self::CLINICAL_ABILITIES, true) ? true : null);
 
         Gate::define('access-admin', fn (User $user): bool => $user->hasRole(UserRole::ClinicAdmin));
 
