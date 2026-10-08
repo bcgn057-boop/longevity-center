@@ -7,9 +7,11 @@ use App\Enums\Sex;
 use App\Http\Requests\Patients\StorePatientRequest;
 use App\Http\Requests\Patients\UpdatePatientRequest;
 use App\Http\Resources\PatientResource;
+use App\Labs\LabPresenter;
 use App\Models\Appointment;
 use App\Models\CareReminder;
 use App\Models\EmergencyContact;
+use App\Models\LabReport;
 use App\Models\Patient;
 use App\Reminders\NotificationConsent;
 use App\Services\AuditLogger;
@@ -100,6 +102,7 @@ class PatientController extends Controller
             'patient' => $this->present($request, $patient),
             'consent' => $canManageConsent ? $consent->summary($patient) : null,
             'careReminders' => $canManageCareReminders ? $this->careReminders($patient) : null,
+            'labReports' => $user?->can('viewLabReports', LabReport::class) ? $this->labReports($patient) : null,
             'can' => [
                 'update' => $request->user()?->can('update', $patient),
                 'archive' => $request->user()?->can('archive', $patient),
@@ -108,6 +111,7 @@ class PatientController extends Controller
                 'bookAppointment' => ! $patient->trashed() && $request->user()?->can('create', Appointment::class),
                 'manageConsent' => $canManageConsent,
                 'manageCareReminders' => $canManageCareReminders,
+                'addLabReport' => ! $patient->trashed() && (bool) $user?->can('enterLabResults', LabReport::class),
             ],
         ]);
     }
@@ -171,11 +175,32 @@ class PatientController extends Controller
             $sections[] = 'care_reminders';
         }
 
+        if ($context === 'show' && $request->user()?->can('viewLabReports', LabReport::class)) {
+            $sections[] = 'lab_reports';
+        }
+
         $this->audit->record(
             AuditEvent::PatientViewed,
             auditable: $patient,
             metadata: ['context' => $context, 'sections' => $sections],
         );
+    }
+
+    /**
+     * The patient's lab reports, newest first, without values.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function labReports(Patient $patient): array
+    {
+        return $patient->labReports()
+            ->with(['patient', 'enteredBy:id,name'])
+            ->withCount(['results' => fn ($query) => $query->whereDoesntHave('successor')])
+            ->orderByDesc('collected_at')
+            ->limit(50)
+            ->get()
+            ->map(fn (LabReport $report) => LabPresenter::summary($report))
+            ->all();
     }
 
     /**

@@ -4,3 +4,4 @@ export * from './patient';
 export * from './ui';
 export * from './appointment';
 export * from './notification';
+export * from './lab';

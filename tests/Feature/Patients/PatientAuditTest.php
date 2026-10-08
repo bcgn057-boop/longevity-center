@@ -30,7 +30,7 @@ test('viewing a patient is audited with the sections shown', function (UserRole 
         ->and($entry->auditable_id)->toBe($patient->id)
         ->and($entry->metadata)->toBe(['context' => 'show', 'sections' => $sections]);
 })->with([
-    'doctor' => [UserRole::Doctor, ['demographics', 'contact', 'emergency_contacts', 'medical', 'care_reminders']],
+    'doctor' => [UserRole::Doctor, ['demographics', 'contact', 'emergency_contacts', 'medical', 'care_reminders', 'lab_reports']],
     'clinic admin' => [UserRole::ClinicAdmin, ['demographics', 'contact', 'emergency_contacts', 'care_reminders']],
     'super admin' => [UserRole::SuperAdmin, ['demographics', 'contact', 'emergency_contacts']],
 ]);

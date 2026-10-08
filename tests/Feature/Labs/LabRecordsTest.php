@@ -111,7 +111,7 @@ describe('corrections and retention', function () {
         $doctor = userWithRole(UserRole::Doctor);
         $original = result(['value' => '142']);
 
-        $correction = $original->correct(['value' => '124', 'unit' => 'mg/dL'], $doctor);
+        $correction = $original->correct(['value' => '124', 'unit' => 'mg/dL'], 'Transcription error', $doctor);
 
         expect($correction->supersedes_id)->toBe($original->id)
             ->and($correction->entered_by)->toBe($doctor->id)
@@ -120,11 +120,22 @@ describe('corrections and retention', function () {
             ->and($this->report->results()->count())->toBe(2);
     });
 
+    test('a correction needs a reason, stored encrypted', function () {
+        $original = result();
+
+        expect(fn () => $original->correct(['value' => '1', 'unit' => 'mg/dL'], '  ', null))->toThrow(InvalidArgumentException::class);
+
+        $correction = $original->correct(['value' => '1', 'unit' => 'mg/dL'], 'Lab amended its report', null);
+
+        expect($correction->fresh()->correction_reason)->toBe('Lab amended its report')
+            ->and(DB::table('lab_results')->where('id', $correction->id)->value('correction_reason'))->not->toContain('amended');
+    });
+
     test('only the latest version can be corrected', function () {
         $original = result();
-        $original->correct(['value' => '1', 'unit' => 'mg/dL'], null);
+        $original->correct(['value' => '1', 'unit' => 'mg/dL'], 'Fix', null);
 
-        $original->correct(['value' => '2', 'unit' => 'mg/dL'], null);
+        $original->correct(['value' => '2', 'unit' => 'mg/dL'], 'Fix', null);
     })->throws(LogicException::class);
 
     test('results cannot be edited', function () {
@@ -170,7 +181,7 @@ describe('release', function () {
 
         expect(fn () => result())->toThrow(LogicException::class);
 
-        $correction = $original->correct(['value' => '50', 'unit' => 'mg/dL'], null);
+        $correction = $original->correct(['value' => '50', 'unit' => 'mg/dL'], 'Lab amended', null);
 
         expect($correction->exists)->toBeTrue();
     });
@@ -180,7 +191,7 @@ describe('auditing', function () {
     test('entering, correcting and releasing are audited without values', function () {
         $report = LabReport::factory()->create(['notes' => 'Not fasting']);
         $result = LabResult::factory()->for($report, 'report')->for($this->apob)->create(['value' => '142.7', 'comment' => 'Recheck']);
-        $result->correct(['value' => '124.3', 'unit' => 'mg/dL', 'comment' => 'Typo fixed'], null);
+        $result->correct(['value' => '124.3', 'unit' => 'mg/dL', 'comment' => 'Typo fixed'], 'Transcription error', null);
         $report->update(['lab_name' => 'Other lab']);
         $report->release(userWithRole(UserRole::Doctor));
 

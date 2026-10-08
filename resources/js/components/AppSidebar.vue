@@ -4,6 +4,7 @@ import {
     BookOpen,
     CalendarCheck,
     CalendarDays,
+    FlaskConical,
     FolderGit2,
     LayoutGrid,
     ScrollText,
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard, myProfile } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as labsIndex } from '@/routes/labs';
 import { index as auditLogs } from '@/routes/admin/audit-logs';
 import { index as appointmentsIndex } from '@/routes/appointments';
 import { index as myAppointments } from '@/routes/my-appointments';
@@ -61,6 +63,14 @@ const mainNavItems = computed<NavItem[]>(() => {
             title: 'Appointments',
             href: appointmentsIndex(),
             icon: CalendarDays,
+        });
+    }
+
+    if (role === 'lab_staff' || role === 'doctor' || role === 'practitioner') {
+        items.push({
+            title: 'Lab results',
+            href: labsIndex(),
+            icon: FlaskConical,
         });
     }
 

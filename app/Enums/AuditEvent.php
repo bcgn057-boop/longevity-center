@@ -52,6 +52,8 @@ enum AuditEvent: string
 
     // Lab results
     case LabReportCreated = 'lab_report.created';
+    case LabReportListed = 'lab_report.listed';
+    case LabReportViewed = 'lab_report.viewed';
     case LabReportUpdated = 'lab_report.updated';
     case LabReportReleased = 'lab_report.released';
     case LabResultRecorded = 'lab_result.recorded';

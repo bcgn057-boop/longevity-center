@@ -18,6 +18,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { create as bookAppointment } from '@/routes/appointments';
+import {
+    create as createLabReport,
+    show as showLabReport,
+} from '@/routes/labs';
 import { destroy, edit, index } from '@/routes/patients';
 import {
     destroy as unlinkAccount,
@@ -27,12 +31,18 @@ import {
     destroy as withdrawConsent,
     store as recordConsent,
 } from '@/routes/patients/consent';
-import type { CareReminderItem, ConsentChannel, Patient } from '@/types';
+import type {
+    CareReminderItem,
+    ConsentChannel,
+    LabReportSummary,
+    Patient,
+} from '@/types';
 
 const props = defineProps<{
     patient: Patient;
     consent: ConsentChannel[] | null;
     careReminders: CareReminderItem[] | null;
+    labReports: LabReportSummary[] | null;
     can: {
         update: boolean;
         archive: boolean;
@@ -41,6 +51,7 @@ const props = defineProps<{
         bookAppointment: boolean;
         manageConsent: boolean;
         manageCareReminders: boolean;
+        addLabReport: boolean;
     };
 }>();
 
@@ -172,6 +183,53 @@ function submitArchive(): void {
                 intro="Read this to the patient and record their answer:"
                 checkbox-label="The patient has agreed to this wording."
             />
+        </section>
+
+        <section v-if="labReports" class="space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h2 class="text-base font-medium">Lab reports</h2>
+                <Button
+                    v-if="can.addLabReport"
+                    variant="outline"
+                    size="sm"
+                    as-child
+                >
+                    <Link
+                        :href="
+                            createLabReport({
+                                query: { patient_id: patient.id },
+                            })
+                        "
+                    >
+                        Add lab report
+                    </Link>
+                </Button>
+            </div>
+            <p
+                v-if="labReports.length === 0"
+                class="text-sm text-muted-foreground"
+            >
+                No lab reports yet.
+            </p>
+            <ul v-else class="divide-y rounded-lg border text-sm">
+                <li
+                    v-for="report in labReports"
+                    :key="report.id"
+                    class="flex flex-wrap items-center justify-between gap-3 px-4 py-2"
+                >
+                    <Link
+                        :href="showLabReport(report.id)"
+                        class="font-medium underline-offset-4 hover:underline"
+                    >
+                        {{ report.collected }}
+                    </Link>
+                    <span class="text-muted-foreground">
+                        {{ report.lab_name ?? '—' }} ·
+                        {{ report.results_count }} results ·
+                        {{ report.status_label }}
+                    </span>
+                </li>
+            </ul>
         </section>
 
         <CareReminders

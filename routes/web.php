@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\CareReminderController;
+use App\Http\Controllers\LabReportController;
 use App\Http\Controllers\MyAppointmentController;
 use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\NotificationController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\PatientConsentController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\Settings\NotificationSettingsController;
 use App\Models\Appointment;
+use App\Models\LabReport;
 use App\Models\Patient;
 use Illuminate\Support\Facades\Route;
 
@@ -108,6 +110,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('appointments/{appointment}/cancel', [AppointmentController::class, 'cancel'])
             ->can('cancel', 'appointment')
             ->name('appointments.cancel');
+    });
+
+    // Lab results: clinical data, so no Super Admin or Clinic Admin. The role
+    // check runs before route model binding, so others get the same 403
+    // whether or not a report id exists.
+    Route::middleware('role:lab_staff,doctor,practitioner')->group(function () {
+        Route::get('labs', [LabReportController::class, 'index'])
+            ->can('viewLabReports', LabReport::class)
+            ->name('labs.index');
+        Route::get('labs/create', [LabReportController::class, 'create'])
+            ->can('enterLabResults', LabReport::class)
+            ->name('labs.create');
+        Route::post('labs', [LabReportController::class, 'store'])
+            ->can('enterLabResults', LabReport::class)
+            ->name('labs.store');
+        Route::get('labs/{labReport}', [LabReportController::class, 'show'])
+            ->can('viewLabReport', 'labReport')
+            ->name('labs.show');
+        Route::post('labs/{labReport}/results', [LabReportController::class, 'addResults'])
+            ->can('enterLabResults', 'labReport')
+            ->name('labs.results.store');
+        Route::post('labs/{labReport}/release', [LabReportController::class, 'release'])
+            ->can('releaseLabReport', 'labReport')
+            ->name('labs.release');
+        // Authorized in the controller against the result's report.
+        Route::post('lab-results/{labResult}/corrections', [LabReportController::class, 'correct'])
+            ->name('lab-results.corrections.store');
     });
 
     // The patient portal. Appointments are looked up among the patient's own

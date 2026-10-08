@@ -33,6 +33,7 @@ use LogicException;
  * @property string|null $reference_low
  * @property string|null $reference_high
  * @property string|null $comment
+ * @property string|null $correction_reason
  * @property int|null $supersedes_id
  * @property int|null $entered_by
  * @property Carbon|null $created_at
@@ -41,10 +42,11 @@ use LogicException;
  * @property-read Biomarker $biomarker
  * @property-read LabResult|null $supersedes
  * @property-read LabResult|null $successor
+ * @property-read User|null $enteredBy
  */
 #[ObservedBy(LabResultObserver::class)]
 #[Fillable(['biomarker_id', 'value', 'unit', 'reference_low', 'reference_high', 'comment'])]
-#[Hidden(['value', 'comment'])]
+#[Hidden(['value', 'comment', 'correction_reason'])]
 class LabResult extends Model
 {
     /** @use HasFactory<LabResultFactory> */
@@ -64,6 +66,14 @@ class LabResult extends Model
     public function biomarker(): BelongsTo
     {
         return $this->belongsTo(Biomarker::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function enteredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'entered_by');
     }
 
     /**
@@ -113,10 +123,15 @@ class LabResult extends Model
     /**
      * Record a correction: a new result replacing this one on the same report.
      *
-     * @param  array{value: string, unit: string, reference_low?: string|null, reference_high?: string|null, comment?: string|null}  $attributes
+     * @param  array{value: string, unit: string, reference_low?: string|null, reference_high?: string|null, comment?: string|null, biomarker_id?: int}  $attributes
+     * @param  string  $reason  why the correction was made, e.g. "transcription error"
      */
-    public function correct(array $attributes, ?User $by): self
+    public function correct(array $attributes, string $reason, ?User $by): self
     {
+        if (trim($reason) === '') {
+            throw new InvalidArgumentException('A correction needs a reason.');
+        }
+
         if ($this->successor()->exists()) {
             throw new LogicException('This result has already been corrected. Correct the latest version instead.');
         }
@@ -124,6 +139,7 @@ class LabResult extends Model
         $correction = new self([...$attributes, 'biomarker_id' => $this->biomarker_id]);
         $correction->lab_report_id = $this->lab_report_id;
         $correction->supersedes_id = $this->id;
+        $correction->correction_reason = trim($reason);
         $correction->entered_by = $by?->id;
         $correction->save();
 
@@ -170,6 +186,7 @@ class LabResult extends Model
         return [
             'value' => 'encrypted',
             'comment' => 'encrypted',
+            'correction_reason' => 'encrypted',
             'reference_low' => 'decimal:4',
             'reference_high' => 'decimal:4',
         ];
