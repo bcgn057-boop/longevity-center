@@ -19,8 +19,11 @@ class ReminderEligibility
 
     /**
      * Get why the patient may not be reminded on the channel, or null if they may.
+     *
+     * @param  bool  $portalOnly  the message only says "sign in to read it", so
+     *                            every channel needs a portal account
      */
-    public function forPatient(Patient $patient, NotificationChannel $channel): ?ReminderSkipReason
+    public function forPatient(Patient $patient, NotificationChannel $channel, bool $portalOnly = false): ?ReminderSkipReason
     {
         if (! $channel->enabled()) {
             return ReminderSkipReason::ChannelDisabled;
@@ -32,7 +35,7 @@ class ReminderEligibility
 
         // In-app messages need an inbox, and the WhatsApp message is only a
         // link to the portal.
-        if ($channel !== NotificationChannel::Mail && $patient->user_id === null) {
+        if (($portalOnly || $channel !== NotificationChannel::Mail) && $patient->user_id === null) {
             return ReminderSkipReason::NoPortalAccount;
         }
 

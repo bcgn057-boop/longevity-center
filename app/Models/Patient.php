@@ -102,6 +102,16 @@ class Patient extends Model implements ReceivesReminders
     }
 
     /**
+     * Get the care reminders written for the patient.
+     *
+     * @return HasMany<CareReminder, $this>
+     */
+    public function careReminders(): HasMany
+    {
+        return $this->hasMany(CareReminder::class);
+    }
+
+    /**
      * Get the address reminders on the channel go to, or null if there is none.
      * In-app reminders go to the linked portal account.
      */

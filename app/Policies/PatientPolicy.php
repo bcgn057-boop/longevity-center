@@ -69,6 +69,23 @@ class PatientPolicy
         return $user->hasRole(UserRole::ClinicAdmin);
     }
 
+    /**
+     * Recording consent to email and WhatsApp reminders on the patient's behalf.
+     */
+    public function manageConsent(User $user, Patient $patient): bool
+    {
+        return $user->hasAnyRole(...self::STAFF);
+    }
+
+    /**
+     * Writing and reading care reminders. Not granted to the Super Admin by
+     * Gate::before, because the text may be clinical: see AppServiceProvider.
+     */
+    public function manageCareReminders(User $user, Patient $patient): bool
+    {
+        return $user->hasAnyRole(...self::STAFF);
+    }
+
     private function isOwnRecord(User $user, Patient $patient): bool
     {
         return $user->hasRole(UserRole::Patient)

@@ -16,12 +16,25 @@ final readonly class WhatsAppMessage
     ) {}
 
     /**
-     * The reminder template configured in config/reminders.php.
+     * The appointment reminder template configured in config/reminders.php.
      */
     public static function reminder(): self
     {
+        return self::configured('template');
+    }
+
+    /**
+     * The care reminder template configured in config/reminders.php.
+     */
+    public static function careReminder(): self
+    {
+        return self::configured('care_template');
+    }
+
+    private static function configured(string $key): self
+    {
         return new self(
-            (string) config('reminders.channels.whatsapp.template'),
+            (string) config("reminders.channels.whatsapp.{$key}"),
             (string) config('reminders.channels.whatsapp.language'),
         );
     }

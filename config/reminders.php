@@ -40,6 +40,11 @@ return [
             // "You have an upcoming appointment with Longevity Center.
             //  Please sign in to view the details: https://portal.example.com/my-appointments"
             'template' => env('WHATSAPP_REMINDER_TEMPLATE', 'appointment_reminder'),
+
+            // For care reminders, also with NO variables, e.g.:
+            // "You have a new message from Longevity Center. Please sign in
+            //  to read it: https://portal.example.com/notifications"
+            'care_template' => env('WHATSAPP_CARE_TEMPLATE', 'care_reminder'),
             'language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'en'),
         ],
 
@@ -87,6 +92,27 @@ return [
     */
 
     'consent_version' => 1,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Consent Wording
+    |--------------------------------------------------------------------------
+    |
+    | Shown to patients in their settings, and read to them by staff before
+    | recording consent. Changing it means increasing consent_version.
+    |
+    */
+
+    'consent_wording' => [
+        'mail' => 'I agree to receive reminders from :clinic by email at the address shown. '
+            .'Appointment reminders include the date and time but no medical details; other messages only ask me to sign in to the patient portal. '
+            .'Email is not encrypted, so anyone with access to my inbox could read them. I can withdraw at any time.',
+
+        'whatsapp' => 'I agree to receive reminders from :clinic by WhatsApp at the number shown. '
+            .'The messages contain no medical details, only a link to the patient portal. '
+            .'WhatsApp is run by Meta, not by the clinic, and anyone who sees these messages may learn that I am a patient of the clinic. '
+            .'I can withdraw at any time.',
+    ],
 
     /*
     |--------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
+import ConsentCard from '@/components/ConsentCard.vue';
+import CareReminders from '@/components/patients/CareReminders.vue';
 import PatientDetails from '@/components/patients/PatientDetails.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,16 +23,24 @@ import {
     destroy as unlinkAccount,
     store as linkAccount,
 } from '@/routes/patients/account';
-import type { Patient } from '@/types';
+import {
+    destroy as withdrawConsent,
+    store as recordConsent,
+} from '@/routes/patients/consent';
+import type { CareReminderItem, ConsentChannel, Patient } from '@/types';
 
 const props = defineProps<{
     patient: Patient;
+    consent: ConsentChannel[] | null;
+    careReminders: CareReminderItem[] | null;
     can: {
         update: boolean;
         archive: boolean;
         linkAccount: boolean;
         viewMedical: boolean;
         bookAppointment: boolean;
+        manageConsent: boolean;
+        manageCareReminders: boolean;
     };
 }>();
 
@@ -130,6 +140,46 @@ function submitArchive(): void {
         </div>
 
         <PatientDetails :patient="patient" />
+
+        <section
+            v-if="can.manageConsent && consent && consent.length"
+            class="space-y-3"
+        >
+            <div>
+                <h2 class="text-base font-medium">Reminder consent</h2>
+                <p class="text-sm text-muted-foreground">
+                    In-app reminders need no consent. Email and WhatsApp are
+                    only used once the patient agrees.
+                </p>
+            </div>
+            <ConsentCard
+                v-for="channel in consent"
+                :key="channel.channel"
+                :consent="channel"
+                :grant-url="
+                    recordConsent({
+                        patient: patient.id,
+                        channel: channel.channel,
+                    }).url
+                "
+                :withdraw-url="
+                    withdrawConsent({
+                        patient: patient.id,
+                        channel: channel.channel,
+                    }).url
+                "
+                field="confirmed"
+                intro="Read this to the patient and record their answer:"
+                checkbox-label="The patient has agreed to this wording."
+            />
+        </section>
+
+        <CareReminders
+            v-if="can.manageCareReminders && careReminders"
+            :patient-id="patient.id"
+            :reminders="careReminders"
+            :has-account="patient.account !== null"
+        />
 
         <section v-if="can.linkAccount" class="space-y-3">
             <h2 class="text-base font-medium">Patient portal account</h2>

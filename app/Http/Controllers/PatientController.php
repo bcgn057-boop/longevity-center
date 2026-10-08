@@ -8,8 +8,10 @@ use App\Http\Requests\Patients\StorePatientRequest;
 use App\Http\Requests\Patients\UpdatePatientRequest;
 use App\Http\Resources\PatientResource;
 use App\Models\Appointment;
+use App\Models\CareReminder;
 use App\Models\EmergencyContact;
 use App\Models\Patient;
+use App\Reminders\NotificationConsent;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -86,18 +88,26 @@ class PatientController extends Controller
         return to_route('patients.show', $patient);
     }
 
-    public function show(Request $request, Patient $patient): Response
+    public function show(Request $request, Patient $patient, NotificationConsent $consent): Response
     {
         $this->recordView($request, $patient, 'show');
 
+        $user = $request->user();
+        $canManageConsent = (bool) $user?->can('manageConsent', $patient);
+        $canManageCareReminders = (bool) $user?->can('manageCareReminders', $patient);
+
         return Inertia::render('patients/Show', [
             'patient' => $this->present($request, $patient),
+            'consent' => $canManageConsent ? $consent->summary($patient) : null,
+            'careReminders' => $canManageCareReminders ? $this->careReminders($patient) : null,
             'can' => [
                 'update' => $request->user()?->can('update', $patient),
                 'archive' => $request->user()?->can('archive', $patient),
                 'linkAccount' => $request->user()?->can('linkAccount', $patient),
                 'viewMedical' => $request->user()?->can('viewMedical', $patient),
                 'bookAppointment' => ! $patient->trashed() && $request->user()?->can('create', Appointment::class),
+                'manageConsent' => $canManageConsent,
+                'manageCareReminders' => $canManageCareReminders,
             ],
         ]);
     }
@@ -157,11 +167,41 @@ class PatientController extends Controller
             $sections[] = 'medical';
         }
 
+        if ($context === 'show' && $request->user()?->can('manageCareReminders', $patient)) {
+            $sections[] = 'care_reminders';
+        }
+
         $this->audit->record(
             AuditEvent::PatientViewed,
             auditable: $patient,
             metadata: ['context' => $context, 'sections' => $sections],
         );
+    }
+
+    /**
+     * The patient's care reminders, newest first, with times in the clinic's timezone.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function careReminders(Patient $patient): array
+    {
+        $timezone = (string) config('clinic.timezone');
+
+        return $patient->careReminders()
+            ->with('creator:id,name')
+            ->orderByDesc('due_at')
+            ->limit(50)
+            ->get()
+            ->map(fn (CareReminder $reminder) => [
+                'id' => $reminder->id,
+                'title' => $reminder->title,
+                'message' => $reminder->message,
+                'due' => $reminder->due_at->copy()->setTimezone($timezone)->format('D j M Y H:i'),
+                'status' => $reminder->status->value,
+                'status_label' => $reminder->status->label(),
+                'created_by' => $reminder->creator?->name,
+            ])
+            ->all();
     }
 
     /**

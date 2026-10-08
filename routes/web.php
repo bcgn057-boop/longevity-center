@@ -2,10 +2,14 @@
 
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\CareReminderController;
 use App\Http\Controllers\MyAppointmentController;
 use App\Http\Controllers\MyProfileController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PatientAccountLinkController;
+use App\Http\Controllers\PatientConsentController;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\Settings\NotificationSettingsController;
 use App\Models\Appointment;
 use App\Models\Patient;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +18,12 @@ Route::inertia('/', 'Welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('notifications/{notification}/read', [NotificationController::class, 'read'])
+        ->whereUuid('notification')
+        ->name('notifications.read');
 
     Route::middleware('role:super_admin,clinic_admin')
         ->prefix('admin')
@@ -58,6 +68,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->can('linkAccount', 'patient')
             ->name('patients.account.destroy');
 
+        Route::post('patients/{patient}/consent/{channel}', [PatientConsentController::class, 'store'])
+            ->can('manageConsent', 'patient')
+            ->name('patients.consent.store');
+        Route::delete('patients/{patient}/consent/{channel}', [PatientConsentController::class, 'destroy'])
+            ->can('manageConsent', 'patient')
+            ->name('patients.consent.destroy');
+
+        // Care reminders may hold clinical text: clinic staff only, not the Super Admin.
+        Route::middleware('role:clinic_admin,doctor,practitioner')->group(function () {
+            Route::post('patients/{patient}/care-reminders', [CareReminderController::class, 'store'])
+                ->can('manageCareReminders', 'patient')
+                ->name('patients.care-reminders.store');
+            Route::post('care-reminders/{careReminder}/cancel', [CareReminderController::class, 'cancel'])
+                ->name('care-reminders.cancel');
+        });
+
         Route::get('appointments', [AppointmentController::class, 'index'])
             ->can('viewAny', Appointment::class)
             ->name('appointments.index');
@@ -94,6 +120,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('my-appointments/{appointment}/cancel', [MyAppointmentController::class, 'cancel'])
             ->whereNumber('appointment')
             ->name('my-appointments.cancel');
+
+        Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])
+            ->name('notification-settings.edit');
+        Route::post('settings/notifications/{channel}', [NotificationSettingsController::class, 'grant'])
+            ->name('notification-settings.grant');
+        Route::delete('settings/notifications/{channel}', [NotificationSettingsController::class, 'withdraw'])
+            ->name('notification-settings.withdraw');
     });
 });
 

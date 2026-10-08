@@ -3,14 +3,17 @@
 namespace App\Reminders;
 
 use App\Enums\AppointmentStatus;
+use App\Enums\CareReminderStatus;
 use App\Enums\NotificationChannel;
 use App\Models\Appointment;
+use App\Models\CareReminder;
 use App\Models\ReminderDelivery;
 use App\Notifications\AppointmentReminderNotification;
+use App\Notifications\CareReminderNotification;
 use Throwable;
 
 /**
- * Queues an appointment's reminders, one per enabled channel.
+ * Queues reminders, one per enabled channel.
  *
  * Each channel first claims its row in the delivery log. The unique key
  * means a second attempt for the same reminder finds the row taken and does
@@ -60,6 +63,50 @@ class ReminderDispatcher
                 // Only reached when the queue runs jobs synchronously. The
                 // notification's failed() hook has recorded the code; one
                 // channel failing must not stop the others.
+            }
+        }
+
+        return $deliveries;
+    }
+
+    /**
+     * Send a due care reminder on every enabled channel, then mark it sent.
+     *
+     * @return array<int, ReminderDelivery> the deliveries claimed by this call
+     */
+    public function sendCareReminder(CareReminder $reminder): array
+    {
+        if ($reminder->status !== CareReminderStatus::Scheduled) {
+            return [];
+        }
+
+        // Marked first: the notifications only go out for a sent reminder,
+        // and a staff member can no longer cancel it once it is on its way.
+        $reminder->markSent();
+
+        $patient = $reminder->patient;
+        $deliveries = [];
+
+        foreach (NotificationChannel::enabledCases() as $channel) {
+            $delivery = ReminderDelivery::claim($reminder, $patient, $channel, CareReminderNotification::KIND, $reminder->due_at);
+
+            if ($delivery === null) {
+                continue;
+            }
+
+            $deliveries[] = $delivery;
+            $reason = $this->eligibility->forPatient($patient, $channel, portalOnly: true);
+
+            if ($reason !== null) {
+                $delivery->markSkipped($reason);
+
+                continue;
+            }
+
+            try {
+                $patient->notify(new CareReminderNotification($reminder, $delivery));
+            } catch (Throwable) {
+                // See remindPatient().
             }
         }
 

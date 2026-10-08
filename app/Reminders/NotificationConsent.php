@@ -115,6 +115,48 @@ class NotificationConsent
         return null;
     }
 
+    /**
+     * Describe the recipient's consent for each consent-based channel that is
+     * switched on, for display. Addresses are masked.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function summary(Model&ReceivesReminders $recipient): array
+    {
+        $timezone = (string) config('clinic.timezone');
+        $channels = array_filter(NotificationChannel::enabledCases(), fn (NotificationChannel $channel) => $channel->requiresConsent());
+
+        return array_values(array_map(function (NotificationChannel $channel) use ($recipient, $timezone) {
+            $preference = $this->preference($recipient, $channel);
+            $destination = $recipient->reminderDestination($channel);
+            $active = $preference !== null && $preference->isActive();
+
+            return [
+                'channel' => $channel->value,
+                'label' => $channel->label(),
+                'destination' => $destination === null ? null : AddressMask::for($channel, $destination),
+                'active' => $active,
+                'destination_changed' => $active && $this->check($recipient, $channel) === ReminderSkipReason::DestinationChanged,
+                'consented_at' => $active ? $preference->consented_at?->copy()->setTimezone($timezone)->format('D j M Y H:i') : null,
+                'source' => $active ? $preference->source : null,
+                'consent_version' => $active ? $preference->consent_version : null,
+                'wording' => self::wording($channel),
+            ];
+        }, $channels));
+    }
+
+    /**
+     * The consent wording for the channel, as shown to the patient.
+     */
+    public static function wording(NotificationChannel $channel): string
+    {
+        return str_replace(
+            ':clinic',
+            (string) config('clinic.name'),
+            (string) config("reminders.consent_wording.{$channel->value}"),
+        );
+    }
+
     private function preference(Model $recipient, NotificationChannel $channel): ?NotificationPreference
     {
         return NotificationPreference::query()
