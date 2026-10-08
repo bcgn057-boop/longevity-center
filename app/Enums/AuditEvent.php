@@ -50,6 +50,10 @@ enum AuditEvent: string
     case AppointmentCompleted = 'appointment.completed';
     case AppointmentCancelled = 'appointment.cancelled';
 
+    // Notification consent
+    case NotificationConsentGranted = 'notification.consent_granted';
+    case NotificationConsentWithdrawn = 'notification.consent_withdrawn';
+
     // Audit log access
     case AuditLogViewed = 'audit.viewed';
 }

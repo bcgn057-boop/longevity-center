@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\NotificationChannel;
 use App\Enums\Sex;
 use App\Exceptions\MedicalRecordRetentionException;
 use App\Observers\PatientObserver;
+use App\Reminders\ReceivesReminders;
 use Database\Factories\PatientFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -14,7 +16,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
 /**
@@ -53,10 +58,10 @@ use Illuminate\Support\Carbon;
     'allergies',
 ])]
 #[Hidden(['date_of_birth', 'email', 'phone', 'address', 'medical_history', 'allergies'])]
-class Patient extends Model
+class Patient extends Model implements ReceivesReminders
 {
     /** @use HasFactory<PatientFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, Notifiable, SoftDeletes;
 
     /**
      * Fields that contain medical information. Only clinical roles may read or
@@ -94,6 +99,41 @@ class Patient extends Model
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class);
+    }
+
+    /**
+     * Get the address reminders on the channel go to, or null if there is none.
+     * In-app reminders go to the linked portal account.
+     */
+    public function reminderDestination(NotificationChannel $channel): ?string
+    {
+        $destination = match ($channel) {
+            NotificationChannel::Database => $this->user_id === null ? null : (string) $this->user_id,
+            NotificationChannel::Mail => $this->email,
+            NotificationChannel::WhatsApp => $this->phone,
+        };
+
+        return blank($destination) ? null : $destination;
+    }
+
+    public function routeNotificationForMail(): ?string
+    {
+        return $this->reminderDestination(NotificationChannel::Mail);
+    }
+
+    public function routeNotificationForWhatsApp(): ?string
+    {
+        return $this->reminderDestination(NotificationChannel::WhatsApp);
+    }
+
+    /**
+     * In-app notifications are stored in the linked account's inbox.
+     *
+     * @return MorphMany<DatabaseNotification, User>
+     */
+    public function routeNotificationForDatabase(): MorphMany
+    {
+        return $this->user()->firstOrFail()->notifications();
     }
 
     /**

@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    // WhatsApp Business through the Meta Cloud API. Used when
+    // reminders.channels.whatsapp.provider is "meta".
+    'meta_whatsapp' => [
+        'token' => env('WHATSAPP_META_TOKEN'),
+        'phone_number_id' => env('WHATSAPP_META_PHONE_NUMBER_ID'),
+        'api_version' => env('WHATSAPP_META_API_VERSION', 'v23.0'),
+        'base_url' => env('WHATSAPP_META_BASE_URL', 'https://graph.facebook.com'),
+        'timeout' => 10,
+    ],
+
 ];

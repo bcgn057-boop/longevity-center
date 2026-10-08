@@ -5,13 +5,19 @@ namespace App\Providers;
 use App\Audit\AuthenticationEventSubscriber;
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Reminders\RecordReminderSent;
+use App\WhatsApp\LogWhatsAppGateway;
+use App\WhatsApp\MetaCloudWhatsAppGateway;
+use App\WhatsApp\WhatsAppGateway;
 use Carbon\CarbonImmutable;
+use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use InvalidArgumentException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,7 +33,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(WhatsAppGateway::class, fn (): WhatsAppGateway => match (config('reminders.channels.whatsapp.provider')) {
+            'log' => new LogWhatsAppGateway,
+            'meta' => MetaCloudWhatsAppGateway::fromConfig(),
+            default => throw new InvalidArgumentException('Unknown WhatsApp provider. Use "log" or "meta".'),
+        });
     }
 
     /**
@@ -46,6 +56,8 @@ class AppServiceProvider extends ServiceProvider
     protected function configureAuditing(): void
     {
         Event::subscribe(AuthenticationEventSubscriber::class);
+
+        Event::listen(NotificationSent::class, RecordReminderSent::class);
     }
 
     /**
