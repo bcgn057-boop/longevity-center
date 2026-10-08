@@ -50,6 +50,13 @@ enum AuditEvent: string
     case AppointmentCompleted = 'appointment.completed';
     case AppointmentCancelled = 'appointment.cancelled';
 
+    // Lab results
+    case LabReportCreated = 'lab_report.created';
+    case LabReportUpdated = 'lab_report.updated';
+    case LabReportReleased = 'lab_report.released';
+    case LabResultRecorded = 'lab_result.recorded';
+    case LabResultCorrected = 'lab_result.corrected';
+
     // Care reminders
     case CareReminderCreated = 'care_reminder.created';
     case CareReminderCancelled = 'care_reminder.cancelled';
