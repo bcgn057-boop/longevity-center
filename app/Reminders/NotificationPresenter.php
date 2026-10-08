@@ -6,6 +6,7 @@ use App\Enums\AppointmentStatus;
 use App\Enums\UserRole;
 use App\Models\Appointment;
 use App\Models\CareReminder;
+use App\Models\LabReport;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Carbon;
@@ -29,6 +30,7 @@ class NotificationPresenter
             'appointment.reminder' => $this->appointmentReminder($notification, $user),
             'clinician.daily_summary' => $this->dailySummary($notification, $user),
             'care.reminder' => $this->careReminder($notification, $user),
+            'lab.results_released' => $this->labResults($notification, $user),
             default => [__('Notification'), null, null],
         };
 
@@ -108,6 +110,25 @@ class NotificationPresenter
         }
 
         return [$reminder->title, $reminder->message, null];
+    }
+
+    /**
+     * @return array{0: string, 1: string|null, 2: string|null}
+     */
+    private function labResults(DatabaseNotification $notification, User $user): array
+    {
+        $id = $notification->data['lab_report_id'] ?? null;
+        $report = is_int($id) ? LabReport::find($id) : null;
+
+        if ($report === null || Gate::forUser($user)->denies('viewLabReport', $report)) {
+            return [__('New lab results'), __('These results are no longer available.'), null];
+        }
+
+        $body = __('Your results from :date are ready to view.', [
+            'date' => $report->collected_at->copy()->setTimezone($this->timezone())->format('D j M Y'),
+        ]);
+
+        return [__('New lab results'), $body, route('my-results.show', $report)];
     }
 
     private function timezone(): string

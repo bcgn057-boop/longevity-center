@@ -2,96 +2,49 @@
 
 namespace App\Notifications;
 
-use App\Enums\DeliveryStatus;
+use App\Enums\ReminderSkipReason;
 use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\ReminderDelivery;
 use App\Notifications\Messages\WhatsAppMessage;
-use App\Reminders\ReminderDeliveryException;
 use App\Reminders\ReminderEligibility;
-use App\Reminders\TracksDelivery;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
-use Throwable;
 
 /**
  * Reminds a patient of an upcoming appointment on one channel.
  *
- * Each instance belongs to one row in the delivery log and is sent on that
- * row's channel only. Nothing clinical is ever included:
+ * Nothing clinical is ever included:
  *  - email: the clinic, date and time, and a portal link;
  *  - in-app: ids only, the wording is built when the inbox is shown;
  *  - WhatsApp: a fixed template with no variables.
  */
-class AppointmentReminderNotification extends Notification implements ShouldQueue, TracksDelivery
+class AppointmentReminderNotification extends TrackedNotification
 {
-    use Queueable;
-
     public const KIND = 'appointment_24h';
-
-    public int $tries;
 
     public function __construct(
         public Appointment $appointment,
-        public ReminderDelivery $delivery,
+        ReminderDelivery $delivery,
     ) {
-        $this->tries = count($this->backoff()) + 1;
-
-        // Never send for a booking whose transaction is rolled back.
-        $this->afterCommit();
-    }
-
-    public function delivery(): ReminderDelivery
-    {
-        return $this->delivery;
+        parent::__construct($delivery);
     }
 
     /**
-     * Seconds to wait before each retry.
-     *
-     * @return array<int, int>
+     * The appointment may have been cancelled or moved, or consent
+     * withdrawn, since the reminder was queued.
      */
-    public function backoff(): array
+    protected function skipReason(object $notifiable, ReminderDelivery $delivery): ?ReminderSkipReason
     {
-        return array_map(intval(...), (array) config('reminders.backoff'));
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    public function via(object $notifiable): array
-    {
-        return [$this->delivery->channel->driver()];
-    }
-
-    /**
-     * Re-check just before sending: the appointment may have been cancelled
-     * or moved, or consent withdrawn, since the reminder was queued.
-     */
-    public function shouldSend(object $notifiable, string $channel): bool
-    {
-        $delivery = $this->delivery->fresh();
         $appointment = $this->appointment->fresh();
 
-        if ($delivery === null || $appointment === null || $delivery->status !== DeliveryStatus::Queued) {
-            return false;
+        if ($appointment === null) {
+            return ReminderSkipReason::SubjectUnavailable;
         }
-
-        $delivery->forceFill(['attempts' => $delivery->attempts + 1])->save();
 
         $eligibility = app(ReminderEligibility::class);
-        $reason = $eligibility->forAppointment($appointment, $delivery)
+
+        return $eligibility->forAppointment($appointment, $delivery)
             ?? ($notifiable instanceof Patient ? $eligibility->forPatient($notifiable, $delivery->channel) : null);
-
-        if ($reason !== null) {
-            $delivery->markSkipped($reason);
-
-            return false;
-        }
-
-        return true;
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -139,17 +92,5 @@ class AppointmentReminderNotification extends Notification implements ShouldQueu
     public function toWhatsApp(object $notifiable): WhatsAppMessage
     {
         return WhatsAppMessage::reminder();
-    }
-
-    /**
-     * Called once all retries are used up. Records a short code only: an
-     * exception message may contain the recipient's address.
-     */
-    public function failed(Throwable $exception): void
-    {
-        $this->delivery->fresh()?->markFailed(match (true) {
-            $exception instanceof ReminderDeliveryException => $exception->code(),
-            default => 'error_'.class_basename($exception),
-        });
     }
 }

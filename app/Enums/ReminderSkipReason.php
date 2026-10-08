@@ -16,4 +16,5 @@ enum ReminderSkipReason: string
     case PatientArchived = 'patient_archived';
     case AppointmentNotScheduled = 'appointment_not_scheduled';
     case AppointmentMoved = 'appointment_moved';
+    case SubjectUnavailable = 'subject_unavailable';
 }

@@ -7,9 +7,16 @@ use App\Enums\CareReminderStatus;
 use App\Enums\NotificationChannel;
 use App\Models\Appointment;
 use App\Models\CareReminder;
+use App\Models\LabReport;
+use App\Models\Patient;
 use App\Models\ReminderDelivery;
 use App\Notifications\AppointmentReminderNotification;
 use App\Notifications\CareReminderNotification;
+use App\Notifications\LabResultsReadyNotification;
+use App\Notifications\TrackedNotification;
+use Carbon\CarbonInterface;
+use Closure;
+use Illuminate\Database\Eloquent\Model;
 use Throwable;
 
 /**
@@ -32,41 +39,14 @@ class ReminderDispatcher
             return [];
         }
 
-        $patient = $appointment->patient;
-        $deliveries = [];
-
-        foreach (NotificationChannel::enabledCases() as $channel) {
-            $delivery = ReminderDelivery::claim(
-                $appointment,
-                $patient,
-                $channel,
-                AppointmentReminderNotification::KIND,
-                $appointment->start_time,
-            );
-
-            if ($delivery === null) {
-                continue;
-            }
-
-            $deliveries[] = $delivery;
-            $reason = $this->eligibility->forPatient($patient, $channel);
-
-            if ($reason !== null) {
-                $delivery->markSkipped($reason);
-
-                continue;
-            }
-
-            try {
-                $patient->notify(new AppointmentReminderNotification($appointment, $delivery));
-            } catch (Throwable) {
-                // Only reached when the queue runs jobs synchronously. The
-                // notification's failed() hook has recorded the code; one
-                // channel failing must not stop the others.
-            }
-        }
-
-        return $deliveries;
+        return $this->send(
+            $appointment,
+            $appointment->patient,
+            AppointmentReminderNotification::KIND,
+            $appointment->start_time,
+            portalOnly: false,
+            make: fn (ReminderDelivery $delivery) => new AppointmentReminderNotification($appointment, $delivery),
+        );
     }
 
     /**
@@ -84,18 +64,58 @@ class ReminderDispatcher
         // and a staff member can no longer cancel it once it is on its way.
         $reminder->markSent();
 
-        $patient = $reminder->patient;
+        return $this->send(
+            $reminder,
+            $reminder->patient,
+            CareReminderNotification::KIND,
+            $reminder->due_at,
+            portalOnly: true,
+            make: fn (ReminderDelivery $delivery) => new CareReminderNotification($reminder, $delivery),
+        );
+    }
+
+    /**
+     * Tell the patient a released lab report is ready to view.
+     *
+     * @return array<int, ReminderDelivery> the deliveries claimed by this call
+     */
+    public function announceLabResults(LabReport $report): array
+    {
+        if (! $report->isReleased() || $report->reviewed_at === null) {
+            return [];
+        }
+
+        return $this->send(
+            $report,
+            $report->patient,
+            LabResultsReadyNotification::KIND,
+            $report->reviewed_at,
+            portalOnly: true,
+            make: fn (ReminderDelivery $delivery) => new LabResultsReadyNotification($report, $delivery),
+        );
+    }
+
+    /**
+     * Claim a delivery log row per enabled channel, skip channels the patient
+     * may not be reached on, and queue the notification on the rest.
+     *
+     * @param  bool  $portalOnly  the message only says "sign in to view", so every channel needs a portal account
+     * @param  Closure(ReminderDelivery): TrackedNotification  $make
+     * @return array<int, ReminderDelivery>
+     */
+    private function send(Model $subject, Patient $patient, string $kind, CarbonInterface $scheduledFor, bool $portalOnly, Closure $make): array
+    {
         $deliveries = [];
 
         foreach (NotificationChannel::enabledCases() as $channel) {
-            $delivery = ReminderDelivery::claim($reminder, $patient, $channel, CareReminderNotification::KIND, $reminder->due_at);
+            $delivery = ReminderDelivery::claim($subject, $patient, $channel, $kind, $scheduledFor);
 
             if ($delivery === null) {
                 continue;
             }
 
             $deliveries[] = $delivery;
-            $reason = $this->eligibility->forPatient($patient, $channel, portalOnly: true);
+            $reason = $this->eligibility->forPatient($patient, $channel, $portalOnly);
 
             if ($reason !== null) {
                 $delivery->markSkipped($reason);
@@ -104,9 +124,11 @@ class ReminderDispatcher
             }
 
             try {
-                $patient->notify(new CareReminderNotification($reminder, $delivery));
+                $patient->notify($make($delivery));
             } catch (Throwable) {
-                // See remindPatient().
+                // Only reached when the queue runs jobs synchronously. The
+                // notification's failed() hook has recorded the code; one
+                // channel failing must not stop the others.
             }
         }
 

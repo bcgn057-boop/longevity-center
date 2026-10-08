@@ -32,6 +32,7 @@ import { index as labsIndex } from '@/routes/labs';
 import { index as auditLogs } from '@/routes/admin/audit-logs';
 import { index as appointmentsIndex } from '@/routes/appointments';
 import { index as myAppointments } from '@/routes/my-appointments';
+import { index as myResults } from '@/routes/my-results';
 import { index as patientsIndex } from '@/routes/patients';
 import type { NavItem } from '@/types';
 
@@ -84,6 +85,11 @@ const mainNavItems = computed<NavItem[]>(() => {
             title: 'My appointments',
             href: myAppointments(),
             icon: CalendarCheck,
+        });
+        items.push({
+            title: 'My results',
+            href: myResults(),
+            icon: FlaskConical,
         });
     }
 

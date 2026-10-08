@@ -31,6 +31,14 @@ final readonly class WhatsAppMessage
         return self::configured('care_template');
     }
 
+    /**
+     * The released lab results template configured in config/reminders.php.
+     */
+    public static function labResults(): self
+    {
+        return self::configured('lab_template');
+    }
+
     private static function configured(string $key): self
     {
         return new self(

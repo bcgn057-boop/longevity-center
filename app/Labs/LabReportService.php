@@ -6,6 +6,7 @@ use App\Models\LabReport;
 use App\Models\LabResult;
 use App\Models\Patient;
 use App\Models\User;
+use App\Reminders\ReminderDispatcher;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +17,8 @@ use Illuminate\Validation\ValidationException;
  */
 class LabReportService
 {
+    public function __construct(private readonly ReminderDispatcher $dispatcher) {}
+
     /**
      * @param  array<int, array<string, mixed>>  $results
      */
@@ -63,6 +66,9 @@ class LabReportService
         }
 
         $report->release($reviewer);
+
+        // Generic "new results" notice, only on channels the patient agreed to.
+        $this->dispatcher->announceLabResults($report);
     }
 
     /**

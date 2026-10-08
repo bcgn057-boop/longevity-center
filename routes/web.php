@@ -5,6 +5,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\CareReminderController;
 use App\Http\Controllers\LabReportController;
 use App\Http\Controllers\MyAppointmentController;
+use App\Http\Controllers\MyLabResultsController;
 use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PatientAccountLinkController;
@@ -149,6 +150,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('my-appointments/{appointment}/cancel', [MyAppointmentController::class, 'cancel'])
             ->whereNumber('appointment')
             ->name('my-appointments.cancel');
+
+        Route::get('my-results', [MyLabResultsController::class, 'index'])->name('my-results.index');
+        Route::get('my-results/{report}', [MyLabResultsController::class, 'show'])
+            ->whereNumber('report')
+            ->name('my-results.show');
 
         Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])
             ->name('notification-settings.edit');

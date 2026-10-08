@@ -45,6 +45,11 @@ return [
             // "You have a new message from Longevity Center. Please sign in
             //  to read it: https://portal.example.com/notifications"
             'care_template' => env('WHATSAPP_CARE_TEMPLATE', 'care_reminder'),
+
+            // For released lab results, also with NO variables, e.g.:
+            // "New lab results from Longevity Center are available. Please
+            //  sign in to view them: https://portal.example.com/my-results"
+            'lab_template' => env('WHATSAPP_LAB_TEMPLATE', 'lab_results_ready'),
             'language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'en'),
         ],
 

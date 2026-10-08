@@ -64,3 +64,49 @@ export type ResultRow = {
     reference_high: string;
     comment: string;
 };
+
+// Patient portal: a patient's own released results.
+export type TrendPoint = {
+    report_id: number;
+    date: string;
+    date_label: string;
+    value: string;
+    // Null when reported with a comparator (e.g. "<0.5"): not plotted.
+    number: number | null;
+    unit: string;
+    reference_low: number | null;
+    reference_high: number | null;
+    flag: 'low' | 'normal' | 'high' | null;
+    flag_label: string | null;
+    // Corrected after the report was released.
+    updated: boolean;
+};
+
+export type TrendMarker = {
+    id: number;
+    name: string;
+    latest: TrendPoint;
+    // One series per unit: values are never converted between units.
+    series: { unit: string; points: TrendPoint[] }[];
+};
+
+export type TrendGroup = {
+    category: string;
+    label: string;
+    markers: TrendMarker[];
+};
+
+export type PatientReportSummary = {
+    id: number;
+    collected: string;
+    released: string | null;
+    lab_name: string | null;
+};
+
+export type PatientReport = PatientReportSummary & {
+    groups: {
+        category: string;
+        label: string;
+        results: (TrendPoint & { biomarker: string })[];
+    }[];
+};
