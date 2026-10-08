@@ -7,8 +7,9 @@ use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\ReminderDelivery;
 use App\Notifications\Messages\WhatsAppMessage;
+use App\Reminders\ReminderDeliveryException;
 use App\Reminders\ReminderEligibility;
-use App\WhatsApp\WhatsAppDeliveryException;
+use App\Reminders\TracksDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -24,7 +25,7 @@ use Throwable;
  *  - in-app: ids only, the wording is built when the inbox is shown;
  *  - WhatsApp: a fixed template with no variables.
  */
-class AppointmentReminderNotification extends Notification implements ShouldQueue
+class AppointmentReminderNotification extends Notification implements ShouldQueue, TracksDelivery
 {
     use Queueable;
 
@@ -40,6 +41,11 @@ class AppointmentReminderNotification extends Notification implements ShouldQueu
 
         // Never send for a booking whose transaction is rolled back.
         $this->afterCommit();
+    }
+
+    public function delivery(): ReminderDelivery
+    {
+        return $this->delivery;
     }
 
     /**
@@ -142,7 +148,7 @@ class AppointmentReminderNotification extends Notification implements ShouldQueu
     public function failed(Throwable $exception): void
     {
         $this->delivery->fresh()?->markFailed(match (true) {
-            $exception instanceof WhatsAppDeliveryException => $exception->code(),
+            $exception instanceof ReminderDeliveryException => $exception->code(),
             default => 'error_'.class_basename($exception),
         });
     }

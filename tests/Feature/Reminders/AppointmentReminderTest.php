@@ -9,17 +9,24 @@ use App\Models\NotificationPreference;
 use App\Models\Patient;
 use App\Models\ReminderDelivery;
 use App\Notifications\AppointmentReminderNotification;
+use App\Notifications\Channels\ReminderMailChannel;
 use App\Notifications\Channels\WhatsAppChannel;
 use App\Reminders\NotificationConsent;
+use App\Reminders\ReminderDeliveryException;
 use App\Reminders\ReminderDispatcher;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Client\Request;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\SentMessage;
+use Symfony\Component\Mailer\Transport\AbstractTransport;
 
 const META_URL = 'https://graph.facebook.com/v23.0/123456789/messages';
 
@@ -310,6 +317,61 @@ describe('re-checking when the reminder is sent', function () {
     });
 });
 
+describe('mail failures', function () {
+    test('a mail server error is recorded as a code and never repeats the address', function () {
+        Mail::extend('failing', fn () => new class extends AbstractTransport
+        {
+            protected function doSend(SentMessage $message): void
+            {
+                throw new TransportException('550 Mailbox ada@example.com unavailable');
+            }
+
+            public function __toString(): string
+            {
+                return 'failing';
+            }
+        });
+        config(['mail.mailers.failing' => ['transport' => 'failing'], 'mail.default' => 'failing']);
+        consentTo(NotificationChannel::Mail);
+        $reported = [];
+        app(ExceptionHandler::class)->reportable(function (Throwable $e) use (&$reported) {
+            $reported[] = $e->getMessage();
+        });
+
+        remind();
+
+        expect(delivery(NotificationChannel::Mail)->status)->toBe(DeliveryStatus::Failed)
+            ->and(delivery(NotificationChannel::Mail)->reason_code)->toBe('mail_transport_error')
+            ->and(json_encode($reported))->not->toContain('ada@example.com');
+    });
+
+    test('the mail channel never chains the original error', function () {
+        Mail::extend('failing', fn () => new class extends AbstractTransport
+        {
+            protected function doSend(SentMessage $message): void
+            {
+                throw new TransportException('550 Mailbox ada@example.com unavailable');
+            }
+
+            public function __toString(): string
+            {
+                return 'failing';
+            }
+        });
+        config(['mail.mailers.failing' => ['transport' => 'failing'], 'mail.default' => 'failing']);
+        $delivery = new ReminderDelivery;
+        $delivery->channel = NotificationChannel::Mail;
+
+        try {
+            app(ReminderMailChannel::class)->send($this->patient, new AppointmentReminderNotification($this->appointment, $delivery));
+            $this->fail('Expected the send to fail.');
+        } catch (ReminderDeliveryException $e) {
+            expect($e->getMessage())->toBe('mail_transport_error')
+                ->and($e->getPrevious())->toBeNull();
+        }
+    });
+});
+
 describe('content', function () {
     test('the email gives the clinic, date and time and a portal link, nothing clinical', function () {
         $delivery = new ReminderDelivery;
@@ -361,7 +423,7 @@ describe('content', function () {
         Notification::assertSentTo(
             $this->patient,
             AppointmentReminderNotification::class,
-            fn ($notification, array $channels, $notifiable) => $channels === ['mail']
+            fn ($notification, array $channels, $notifiable) => $channels === [ReminderMailChannel::class]
                 && $notifiable->routeNotificationFor('mail') === 'ada@example.com',
         );
     });

@@ -10,6 +10,7 @@ use App\WhatsApp\LogWhatsAppGateway;
 use App\WhatsApp\MetaCloudWhatsAppGateway;
 use App\WhatsApp\WhatsAppGateway;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +49,18 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureAuthorization();
         $this->configureAuditing();
+        $this->configureDevProcesses();
+    }
+
+    /**
+     * Run the scheduler alongside the queue worker in `php artisan dev`, so
+     * reminders are dispatched during local development.
+     */
+    protected function configureDevProcesses(): void
+    {
+        if ($this->app->isLocal()) {
+            DevCommands::artisan('schedule:work', 'scheduler');
+        }
     }
 
     /**

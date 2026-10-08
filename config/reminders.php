@@ -47,6 +47,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Appointment Reminder Timing
+    |--------------------------------------------------------------------------
+    |
+    | reminders:dispatch (every 5 minutes) reminds patients of scheduled
+    | appointments starting within the lead time. Appointments starting
+    | sooner than the minimum notice are not reminded: the reminder would
+    | arrive too late to help. If the scheduler was down, missed reminders
+    | are sent on the next run while the appointment is still in the window.
+    |
+    */
+
+    'appointment_lead_minutes' => (int) env('REMINDERS_APPOINTMENT_LEAD_MINUTES', 24 * 60),
+
+    'minimum_notice_minutes' => (int) env('REMINDERS_MINIMUM_NOTICE_MINUTES', 60),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Clinician Daily Summary
+    |--------------------------------------------------------------------------
+    |
+    | From this hour (clinic timezone), each clinician with appointments the
+    | next day gets one in-app summary: the date and how many appointments,
+    | never patient names. reminders:clinician-summaries runs hourly, so a
+    | missed run is caught up the next hour.
+    |
+    */
+
+    'clinician_summary_hour' => (int) env('REMINDERS_CLINICIAN_SUMMARY_HOUR', 18),
+
+    /*
+    |--------------------------------------------------------------------------
     | Consent Wording Version
     |--------------------------------------------------------------------------
     |

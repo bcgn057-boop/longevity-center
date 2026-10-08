@@ -2,6 +2,7 @@
 
 namespace App\Enums;
 
+use App\Notifications\Channels\ReminderMailChannel;
 use App\Notifications\Channels\WhatsAppChannel;
 
 /**
@@ -32,7 +33,7 @@ enum NotificationChannel: string
     {
         return match ($this) {
             self::Database => 'database',
-            self::Mail => 'mail',
+            self::Mail => ReminderMailChannel::class,
             self::WhatsApp => WhatsAppChannel::class,
         };
     }

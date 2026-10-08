@@ -5,8 +5,10 @@ namespace App\Models;
 use App\Enums\DeliveryStatus;
 use App\Enums\NotificationChannel;
 use App\Enums\ReminderSkipReason;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 
 /**
@@ -33,6 +35,33 @@ use Illuminate\Support\Carbon;
  */
 class ReminderDelivery extends Model
 {
+    /**
+     * Claim the log row for a reminder, or return null if it already exists.
+     * The unique key makes this the guard against sending anything twice.
+     */
+    public static function claim(
+        Model $remindable,
+        Model $recipient,
+        NotificationChannel $channel,
+        string $kind,
+        CarbonInterface $scheduledFor,
+    ): ?self {
+        try {
+            return self::forceCreate([
+                'remindable_type' => $remindable->getMorphClass(),
+                'remindable_id' => $remindable->getKey(),
+                'recipient_type' => $recipient->getMorphClass(),
+                'recipient_id' => $recipient->getKey(),
+                'channel' => $channel,
+                'kind' => $kind,
+                'scheduled_for' => $scheduledFor,
+                'status' => DeliveryStatus::Queued,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            return null;
+        }
+    }
+
     /**
      * Get what the reminder is about, e.g. an appointment.
      *

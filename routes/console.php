@@ -2,7 +2,12 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Reminders. Each command is idempotent, so a missed or repeated run is safe.
+Schedule::command('reminders:dispatch')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('reminders:clinician-summaries')->hourly()->withoutOverlapping();
