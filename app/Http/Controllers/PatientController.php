@@ -7,6 +7,7 @@ use App\Enums\Sex;
 use App\Http\Requests\Patients\StorePatientRequest;
 use App\Http\Requests\Patients\UpdatePatientRequest;
 use App\Http\Resources\PatientResource;
+use App\Models\Appointment;
 use App\Models\EmergencyContact;
 use App\Models\Patient;
 use App\Services\AuditLogger;
@@ -96,6 +97,7 @@ class PatientController extends Controller
                 'archive' => $request->user()?->can('archive', $patient),
                 'linkAccount' => $request->user()?->can('linkAccount', $patient),
                 'viewMedical' => $request->user()?->can('viewMedical', $patient),
+                'bookAppointment' => ! $patient->trashed() && $request->user()?->can('create', Appointment::class),
             ],
         ]);
     }

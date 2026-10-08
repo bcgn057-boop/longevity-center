@@ -87,6 +87,16 @@ class Patient extends Model
     }
 
     /**
+     * Get the patient's appointments.
+     *
+     * @return HasMany<Appointment, $this>
+     */
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
+    }
+
+    /**
      * Get the patient's full name.
      */
     public function getFullNameAttribute(): string

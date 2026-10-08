@@ -41,6 +41,15 @@ enum AuditEvent: string
     case PatientAccountLinked = 'patient.account_linked';
     case PatientAccountUnlinked = 'patient.account_unlinked';
 
+    // Appointments
+    case AppointmentCreated = 'appointment.created';
+    case AppointmentViewed = 'appointment.viewed';
+    case AppointmentListed = 'appointment.listed';
+    case AppointmentUpdated = 'appointment.updated';
+    case AppointmentRescheduled = 'appointment.rescheduled';
+    case AppointmentCompleted = 'appointment.completed';
+    case AppointmentCancelled = 'appointment.cancelled';
+
     // Audit log access
     case AuditLogViewed = 'audit.viewed';
 }

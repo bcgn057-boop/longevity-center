@@ -1,9 +1,12 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\MyAppointmentController;
 use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\PatientAccountLinkController;
 use App\Http\Controllers\PatientController;
+use App\Models\Appointment;
 use App\Models\Patient;
 use Illuminate\Support\Facades\Route;
 
@@ -54,11 +57,44 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('patients/{patient}/account', [PatientAccountLinkController::class, 'destroy'])
             ->can('linkAccount', 'patient')
             ->name('patients.account.destroy');
+
+        Route::get('appointments', [AppointmentController::class, 'index'])
+            ->can('viewAny', Appointment::class)
+            ->name('appointments.index');
+        Route::get('appointments/create', [AppointmentController::class, 'create'])
+            ->can('create', Appointment::class)
+            ->name('appointments.create');
+        Route::post('appointments', [AppointmentController::class, 'store'])
+            ->can('create', Appointment::class)
+            ->name('appointments.store');
+        Route::get('appointments/{appointment}', [AppointmentController::class, 'show'])
+            ->can('view', 'appointment')
+            ->name('appointments.show');
+        Route::get('appointments/{appointment}/edit', [AppointmentController::class, 'edit'])
+            ->can('update', 'appointment')
+            ->name('appointments.edit');
+        Route::put('appointments/{appointment}', [AppointmentController::class, 'update'])
+            ->can('update', 'appointment')
+            ->name('appointments.update');
+        Route::post('appointments/{appointment}/complete', [AppointmentController::class, 'complete'])
+            ->can('complete', 'appointment')
+            ->name('appointments.complete');
+        Route::post('appointments/{appointment}/cancel', [AppointmentController::class, 'cancel'])
+            ->can('cancel', 'appointment')
+            ->name('appointments.cancel');
     });
 
-    Route::get('my-profile', MyProfileController::class)
-        ->middleware('role:patient')
-        ->name('my-profile');
+    // The patient portal. Appointments are looked up among the patient's own
+    // (not by route model binding), so other ids are indistinguishable 404s.
+    Route::middleware('role:patient')->group(function () {
+        Route::get('my-profile', MyProfileController::class)->name('my-profile');
+
+        Route::get('my-appointments', [MyAppointmentController::class, 'index'])
+            ->name('my-appointments.index');
+        Route::post('my-appointments/{appointment}/cancel', [MyAppointmentController::class, 'cancel'])
+            ->whereNumber('appointment')
+            ->name('my-appointments.cancel');
+    });
 });
 
 require __DIR__.'/settings.php';

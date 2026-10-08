@@ -2,6 +2,8 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import {
     BookOpen,
+    CalendarCheck,
+    CalendarDays,
     FolderGit2,
     LayoutGrid,
     ScrollText,
@@ -26,6 +28,8 @@ import {
 import { dashboard, myProfile } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as auditLogs } from '@/routes/admin/audit-logs';
+import { index as appointmentsIndex } from '@/routes/appointments';
+import { index as myAppointments } from '@/routes/my-appointments';
 import { index as patientsIndex } from '@/routes/patients';
 import type { NavItem } from '@/types';
 
@@ -53,6 +57,11 @@ const mainNavItems = computed<NavItem[]>(() => {
             href: patientsIndex(),
             icon: Users,
         });
+        items.push({
+            title: 'Appointments',
+            href: appointmentsIndex(),
+            icon: CalendarDays,
+        });
     }
 
     if (role === 'patient') {
@@ -60,6 +69,11 @@ const mainNavItems = computed<NavItem[]>(() => {
             title: 'My profile',
             href: myProfile(),
             icon: UserRound,
+        });
+        items.push({
+            title: 'My appointments',
+            href: myAppointments(),
+            icon: CalendarCheck,
         });
     }
 

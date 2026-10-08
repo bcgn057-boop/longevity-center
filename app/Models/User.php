@@ -9,8 +9,10 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -60,6 +62,29 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function patient(): HasOne
     {
         return $this->hasOne(Patient::class);
+    }
+
+    /**
+     * Get the appointments this user runs as a clinician.
+     *
+     * @return HasMany<Appointment, $this>
+     */
+    public function clinicianAppointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class, 'doctor_id');
+    }
+
+    /**
+     * Users who can run appointments: doctors and practitioners.
+     *
+     * @param  Builder<User>  $query
+     */
+    public function scopeClinicians(Builder $query): void
+    {
+        $query->whereHas('role', fn (Builder $query) => $query->whereIn('slug', [
+            UserRole::Doctor->value,
+            UserRole::Practitioner->value,
+        ]));
     }
 
     /**

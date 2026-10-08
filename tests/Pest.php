@@ -94,3 +94,21 @@ function patientPayload(array $overrides = []): array
         ...$overrides,
     ];
 }
+
+/**
+ * A valid booking payload: a 30-minute slot on 2 Nov 2026 in the clinic's timezone.
+ * Tests using it should travel to a time before then.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function appointmentPayload(array $overrides = []): array
+{
+    return [
+        'date' => '2026-11-02',
+        'start_time' => '10:00',
+        'end_time' => '10:30',
+        'reason' => 'Annual review',
+        ...$overrides,
+    ];
+}

@@ -20,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      *
      * @var array<int, string>
      */
-    private const CLINICAL_ABILITIES = ['access-clinical', 'viewMedical', 'updateMedical'];
+    private const CLINICAL_ABILITIES = ['access-clinical', 'viewMedical', 'updateMedical', 'viewReason'];
 
     /**
      * Register any application services.

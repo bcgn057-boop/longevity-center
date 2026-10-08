@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { create as bookAppointment } from '@/routes/appointments';
 import { destroy, edit, index } from '@/routes/patients';
 import {
     destroy as unlinkAccount,
@@ -29,6 +30,7 @@ const props = defineProps<{
         archive: boolean;
         linkAccount: boolean;
         viewMedical: boolean;
+        bookAppointment: boolean;
     };
 }>();
 
@@ -80,6 +82,17 @@ function submitArchive(): void {
             </div>
 
             <div class="flex gap-2">
+                <Button v-if="can.bookAppointment" variant="outline" as-child>
+                    <Link
+                        :href="
+                            bookAppointment({
+                                query: { patient_id: patient.id },
+                            })
+                        "
+                    >
+                        Book appointment
+                    </Link>
+                </Button>
                 <Button v-if="can.update" variant="outline" as-child>
                     <Link :href="edit(patient.id)">Edit</Link>
                 </Button>
