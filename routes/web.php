@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdherenceController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\CareReminderController;
@@ -11,10 +12,12 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PatientAccountLinkController;
 use App\Http\Controllers\PatientConsentController;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\Settings\NotificationSettingsController;
 use App\Models\Appointment;
 use App\Models\LabReport;
 use App\Models\Patient;
+use App\Models\Prescription;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
@@ -140,6 +143,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('lab-results.corrections.store');
     });
 
+    // Prescriptions: clinical data, so no Super Admin or Clinic Admin.
+    // Practitioners read; only doctors issue, adjust and stop. The role check
+    // runs before route model binding, so others get the same 403 whether or
+    // not an id exists.
+    Route::middleware('role:doctor,practitioner')->group(function () {
+        Route::get('patients/{patient}/prescriptions', [PrescriptionController::class, 'index'])
+            ->can('viewPrescriptions', Prescription::class)
+            ->name('patients.prescriptions.index');
+        Route::post('patients/{patient}/prescriptions', [PrescriptionController::class, 'store'])
+            ->can('managePrescriptions', Prescription::class)
+            ->name('patients.prescriptions.store');
+        Route::put('prescriptions/{prescription}', [PrescriptionController::class, 'update'])
+            ->can('managePrescriptions', 'prescription')
+            ->name('prescriptions.update');
+        Route::post('prescriptions/{prescription}/discontinue', [PrescriptionController::class, 'discontinue'])
+            ->can('managePrescriptions', 'prescription')
+            ->name('prescriptions.discontinue');
+        Route::post('prescriptions/{prescription}/items', [PrescriptionController::class, 'addItem'])
+            ->can('managePrescriptions', 'prescription')
+            ->name('prescriptions.items.store');
+        // Authorized against the item's prescription in the request or controller.
+        Route::post('protocol-items/{protocolItem}/adjust', [PrescriptionController::class, 'adjustItem'])
+            ->name('protocol-items.adjust');
+        Route::post('protocol-items/{protocolItem}/discontinue', [PrescriptionController::class, 'discontinueItem'])
+            ->name('protocol-items.discontinue');
+    });
+
     // The patient portal. Appointments are looked up among the patient's own
     // (not by route model binding), so other ids are indistinguishable 404s.
     Route::middleware('role:patient')->group(function () {
@@ -155,6 +185,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('my-results/{report}', [MyLabResultsController::class, 'show'])
             ->whereNumber('report')
             ->name('my-results.show');
+
+        Route::get('my-protocols', [AdherenceController::class, 'index'])->name('my-protocols.index');
+        Route::put('my-protocols/items/{item}/adherence', [AdherenceController::class, 'update'])
+            ->whereNumber('item')
+            ->name('my-protocols.adherence.update');
 
         Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])
             ->name('notification-settings.edit');

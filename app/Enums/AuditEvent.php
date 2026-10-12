@@ -59,6 +59,16 @@ enum AuditEvent: string
     case LabResultRecorded = 'lab_result.recorded';
     case LabResultCorrected = 'lab_result.corrected';
 
+    // Prescriptions and protocols
+    case PrescriptionIssued = 'prescription.issued';
+    case PrescriptionListed = 'prescription.listed';
+    case PrescriptionUpdated = 'prescription.updated';
+    case PrescriptionDiscontinued = 'prescription.discontinued';
+    case ProtocolItemAdded = 'protocol_item.added';
+    case ProtocolItemAdjusted = 'protocol_item.adjusted';
+    case ProtocolItemDiscontinued = 'protocol_item.discontinued';
+    case AdherenceRecorded = 'protocol_adherence.recorded';
+
     // Care reminders
     case CareReminderCreated = 'care_reminder.created';
     case CareReminderCancelled = 'care_reminder.cancelled';

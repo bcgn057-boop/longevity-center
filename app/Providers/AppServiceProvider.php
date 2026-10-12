@@ -30,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
     private const CLINICAL_ABILITIES = [
         'access-clinical', 'viewMedical', 'updateMedical', 'viewReason', 'manageCareReminders',
         'viewLabReports', 'viewLabReport', 'enterLabResults', 'correctLabResults', 'releaseLabReport',
+        'viewPrescriptions', 'managePrescriptions',
     ];
 
     /**

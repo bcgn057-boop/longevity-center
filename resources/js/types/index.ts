@@ -5,3 +5,4 @@ export * from './ui';
 export * from './appointment';
 export * from './notification';
 export * from './lab';
+export * from './prescription';

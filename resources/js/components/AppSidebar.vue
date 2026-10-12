@@ -7,6 +7,7 @@ import {
     FlaskConical,
     FolderGit2,
     LayoutGrid,
+    ListChecks,
     ScrollText,
     ShieldCheck,
     UserRound,
@@ -32,6 +33,7 @@ import { index as labsIndex } from '@/routes/labs';
 import { index as auditLogs } from '@/routes/admin/audit-logs';
 import { index as appointmentsIndex } from '@/routes/appointments';
 import { index as myAppointments } from '@/routes/my-appointments';
+import { index as myProtocols } from '@/routes/my-protocols';
 import { index as myResults } from '@/routes/my-results';
 import { index as patientsIndex } from '@/routes/patients';
 import type { NavItem } from '@/types';
@@ -90,6 +92,11 @@ const mainNavItems = computed<NavItem[]>(() => {
             title: 'My results',
             href: myResults(),
             icon: FlaskConical,
+        });
+        items.push({
+            title: 'My protocols',
+            href: myProtocols(),
+            icon: ListChecks,
         });
     }
 

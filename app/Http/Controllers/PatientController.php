@@ -13,6 +13,7 @@ use App\Models\CareReminder;
 use App\Models\EmergencyContact;
 use App\Models\LabReport;
 use App\Models\Patient;
+use App\Models\Prescription;
 use App\Reminders\NotificationConsent;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
@@ -112,6 +113,7 @@ class PatientController extends Controller
                 'manageConsent' => $canManageConsent,
                 'manageCareReminders' => $canManageCareReminders,
                 'addLabReport' => ! $patient->trashed() && (bool) $user?->can('enterLabResults', LabReport::class),
+                'viewPrescriptions' => ! $patient->trashed() && (bool) $user?->can('viewPrescriptions', Prescription::class),
             ],
         ]);
     }

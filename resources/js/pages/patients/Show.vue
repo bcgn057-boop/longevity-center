@@ -23,6 +23,7 @@ import {
     show as showLabReport,
 } from '@/routes/labs';
 import { destroy, edit, index } from '@/routes/patients';
+import { index as prescriptionsIndex } from '@/routes/patients/prescriptions';
 import {
     destroy as unlinkAccount,
     store as linkAccount,
@@ -52,6 +53,7 @@ const props = defineProps<{
         manageConsent: boolean;
         manageCareReminders: boolean;
         addLabReport: boolean;
+        viewPrescriptions: boolean;
     };
 }>();
 
@@ -112,6 +114,11 @@ function submitArchive(): void {
                         "
                     >
                         Book appointment
+                    </Link>
+                </Button>
+                <Button v-if="can.viewPrescriptions" variant="outline" as-child>
+                    <Link :href="prescriptionsIndex(patient.id)">
+                        Prescriptions
                     </Link>
                 </Button>
                 <Button v-if="can.update" variant="outline" as-child>

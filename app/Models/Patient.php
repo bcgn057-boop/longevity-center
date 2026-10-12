@@ -112,6 +112,16 @@ class Patient extends Model implements ReceivesReminders
     }
 
     /**
+     * Get the prescriptions issued to the patient.
+     *
+     * @return HasMany<Prescription, $this>
+     */
+    public function prescriptions(): HasMany
+    {
+        return $this->hasMany(Prescription::class);
+    }
+
+    /**
      * Get the care reminders written for the patient.
      *
      * @return HasMany<CareReminder, $this>
