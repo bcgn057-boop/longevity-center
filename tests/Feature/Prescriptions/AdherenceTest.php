@@ -213,3 +213,53 @@ describe('recording adherence', function () {
         tick($this->item, ['date' => '2026-10-13'])->assertSessionHasNoErrors();
     });
 });
+
+describe("a clinician's view of the patient's page", function () {
+    test('doctors and practitioners see the page read-only, with ticks and notes', function (UserRole $role) {
+        $this->item->recordAdherence('2026-10-11', true, 'Felt dizzy');
+
+        $this->actingAs(userWithRole($role))
+            ->get(route('patients.protocols.show', $this->patient))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('prescriptions/MyProtocols')
+                ->where('readOnly', true)
+                ->where('patient', ['id' => $this->patient->id, 'full_name' => $this->patient->full_name])
+                ->where('prescriptions.0.items.0.name', 'Metformin')
+                ->where('prescriptions.0.items.0.days.5', ['date' => '2026-10-11', 'scheduled' => true, 'taken' => true, 'notes' => 'Felt dizzy'])
+                ->missing('prescriptions.0.notes'));
+    })->with(['doctor' => UserRole::Doctor, 'practitioner' => UserRole::Practitioner]);
+
+    test('the patient portal itself stays editable', function () {
+        $this->actingAs($this->account)
+            ->get(route('my-protocols.index'))
+            ->assertInertia(fn (Assert $page) => $page->where('readOnly', false)->where('patient', null));
+    });
+
+    test('viewing is audited as a clinician view, without content', function () {
+        $this->actingAs($this->doctor)->get(route('patients.protocols.show', $this->patient));
+
+        expect(auditEntries(AuditEvent::PrescriptionListed)->sole())
+            ->user_id->toBe($this->doctor->id)
+            ->auditable_id->toBe($this->patient->id)
+            ->metadata->toBe(['context' => 'patient_view', 'results' => 1]);
+    });
+
+    test('everyone else is refused, whether or not the patient exists', function (UserRole $role) {
+        $this->actingAs($role === UserRole::Patient ? $this->account : userWithRole($role));
+
+        $this->get(route('patients.protocols.show', $this->patient))->assertForbidden();
+        $this->get(route('patients.protocols.show', 999999))->assertForbidden();
+    })->with([
+        'the patient' => UserRole::Patient,
+        'super admin' => UserRole::SuperAdmin,
+        'clinic admin' => UserRole::ClinicAdmin,
+        'lab staff' => UserRole::LabStaff,
+    ]);
+
+    test('clinicians still cannot tick on the patient\'s behalf', function () {
+        $this->actingAs($this->doctor);
+
+        tick($this->item)->assertForbidden();
+        expect(ProtocolAdherence::count())->toBe(0);
+    });
+});

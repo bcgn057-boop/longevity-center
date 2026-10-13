@@ -6,6 +6,7 @@ import NewPrescriptionForm from '@/components/prescriptions/NewPrescriptionForm.
 import PrescriptionCard from '@/components/prescriptions/PrescriptionCard.vue';
 import { Button } from '@/components/ui/button';
 import { index as patientsIndex, show as showPatient } from '@/routes/patients';
+import { show as patientView } from '@/routes/patients/protocols';
 import type { PrescriptionOptions, StaffPrescription } from '@/types';
 
 const props = defineProps<{
@@ -55,9 +56,14 @@ const creating = ref(props.can.manage && props.prescriptions.length === 0);
                     Only doctors can issue or change prescriptions.
                 </p>
             </div>
-            <Button v-if="can.manage && !creating" @click="creating = true">
-                <Plus class="size-4" /> New prescription
-            </Button>
+            <div class="flex flex-wrap gap-2">
+                <Button variant="outline" as-child>
+                    <Link :href="patientView(patient.id)">Patient's view</Link>
+                </Button>
+                <Button v-if="can.manage && !creating" @click="creating = true">
+                    <Plus class="size-4" /> New prescription
+                </Button>
+            </div>
         </div>
 
         <NewPrescriptionForm

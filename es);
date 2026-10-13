@@ -1,0 +1,26 @@
+[90m= [39m[
+    [34;4mApp\Enums\UserRole[39;24m {#7756
+      +[1mname[22m: [32m"[39m[32mSuperAdmin[39m[32m"[39m,
+      +[1mvalue[22m: [32m"[39m[32msuper_admin[39m[32m"[39m,
+    },
+    [34;4mApp\Enums\UserRole[39;24m {#9048
+      +[1mname[22m: [32m"[39m[32mClinicAdmin[39m[32m"[39m,
+      +[1mvalue[22m: [32m"[39m[32mclinic_admin[39m[32m"[39m,
+    },
+    [34;4mApp\Enums\UserRole[39;24m {#9049
+      +[1mname[22m: [32m"[39m[32mDoctor[39m[32m"[39m,
+      +[1mvalue[22m: [32m"[39m[32mdoctor[39m[32m"[39m,
+    },
+    [34;4mApp\Enums\UserRole[39;24m {#9050
+      +[1mname[22m: [32m"[39m[32mPractitioner[39m[32m"[39m,
+      +[1mvalue[22m: [32m"[39m[32mpractitioner[39m[32m"[39m,
+    },
+    [34;4mApp\Enums\UserRole[39;24m {#9051
+      +[1mname[22m: [32m"[39m[32mLabStaff[39m[32m"[39m,
+      +[1mvalue[22m: [32m"[39m[32mlab_staff[39m[32m"[39m,
+    },
+    [34;4mApp\Enums\UserRole[39;24m {#9052
+      +[1mname[22m: [32m"[39m[32mPatient[39m[32m"[39m,
+      +[1mvalue[22m: [32m"[39m[32mpatient[39m[32m"[39m,
+    },
+  ]

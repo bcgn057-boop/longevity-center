@@ -18,10 +18,11 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * A patient's own protocols and daily adherence.
+ * A patient's own protocols and daily adherence, and a read-only copy of
+ * that page for clinicians.
  *
- * Items are looked up only among the patient's own prescriptions, so another
- * patient's item is a plain 404.
+ * In the portal, items are looked up only among the patient's own
+ * prescriptions, so another patient's item is a plain 404.
  */
 class AdherenceController extends Controller
 {
@@ -30,30 +31,29 @@ class AdherenceController extends Controller
     public function index(Request $request): Response
     {
         $patient = $request->user()?->patient;
-        $days = PrescriptionPresenter::trackedDays();
 
         if (! $patient instanceof Patient) {
-            return Inertia::render('prescriptions/MyProtocols', ['linked' => false, 'prescriptions' => [], 'days' => $days, 'today' => Prescription::today()]);
+            return Inertia::render('prescriptions/MyProtocols', [
+                'linked' => false,
+                'prescriptions' => [],
+                'days' => PrescriptionPresenter::trackedDays(),
+                'today' => Prescription::today(),
+                'readOnly' => false,
+                'patient' => null,
+            ]);
         }
 
-        $prescriptions = $patient->prescriptions()
-            ->inEffect()
-            ->with(['currentItems.adherences' => fn ($query) => $query->whereDate('scheduled_date', '>=', $days[0])])
-            ->orderBy('starts_on')
-            ->orderBy('id')
-            ->get();
+        return $this->protocols($patient, readOnly: false);
+    }
 
-        $this->audit->record(AuditEvent::PrescriptionListed, auditable: $patient, metadata: [
-            'context' => 'self',
-            'results' => $prescriptions->count(),
-        ]);
-
-        return Inertia::render('prescriptions/MyProtocols', [
-            'linked' => true,
-            'prescriptions' => PrescriptionPresenter::forPatient($prescriptions),
-            'days' => $days,
-            'today' => Prescription::today(),
-        ]);
+    /**
+     * A clinician seeing a patient's dashboard as the patient sees it, with
+     * their ticks and notes. Read-only: staff never tick on a patient's
+     * behalf. Authorized on the route.
+     */
+    public function show(Patient $patient): Response
+    {
+        return $this->protocols($patient, readOnly: true);
     }
 
     public function update(Request $request, int $item): RedirectResponse
@@ -80,5 +80,31 @@ class AdherenceController extends Controller
         $protocolItem->recordAdherence($validated['date'], $request->boolean('taken'), $validated['notes'] ?? null);
 
         return to_route('my-protocols.index');
+    }
+
+    private function protocols(Patient $patient, bool $readOnly): Response
+    {
+        $days = PrescriptionPresenter::trackedDays();
+
+        $prescriptions = $patient->prescriptions()
+            ->inEffect()
+            ->with(['currentItems.adherences' => fn ($query) => $query->whereDate('scheduled_date', '>=', $days[0])])
+            ->orderBy('starts_on')
+            ->orderBy('id')
+            ->get();
+
+        $this->audit->record(AuditEvent::PrescriptionListed, auditable: $patient, metadata: [
+            'context' => $readOnly ? 'patient_view' : 'self',
+            'results' => $prescriptions->count(),
+        ]);
+
+        return Inertia::render('prescriptions/MyProtocols', [
+            'linked' => true,
+            'prescriptions' => PrescriptionPresenter::forPatient($prescriptions),
+            'days' => $days,
+            'today' => Prescription::today(),
+            'readOnly' => $readOnly,
+            'patient' => $readOnly ? ['id' => $patient->id, 'full_name' => $patient->full_name] : null,
+        ]);
     }
 }

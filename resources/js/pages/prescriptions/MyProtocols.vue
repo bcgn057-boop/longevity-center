@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { NotebookPen } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
@@ -17,6 +17,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { formatDay, textareaClass } from '@/lib/prescriptions';
 import { update } from '@/routes/my-protocols/adherence';
+import { index as prescriptionsIndex } from '@/routes/patients/prescriptions';
 import type {
     AdherenceDay,
     PatientPrescription,
@@ -29,6 +30,9 @@ const props = defineProps<{
     // The days that can be ticked, oldest first, ending today.
     days: string[];
     today: string;
+    // A clinician's copy of the patient's page: nothing can be ticked or saved.
+    readOnly: boolean;
+    patient: { id: number; full_name: string } | null;
 }>();
 
 const page = usePage();
@@ -62,7 +66,7 @@ const doneToday = computed(() => {
 const saving = ref<string | null>(null);
 
 function toggle(item: PatientProtocolItem, day: AdherenceDay): void {
-    if (!day.scheduled || saving.value) {
+    if (props.readOnly || !day.scheduled || saving.value) {
         return;
     }
 
@@ -97,7 +101,7 @@ function openNote(item: PatientProtocolItem, day: AdherenceDay): void {
 }
 
 function saveNote(): void {
-    if (!noteItem.value) {
+    if (props.readOnly || !noteItem.value) {
         return;
     }
 
@@ -119,10 +123,35 @@ function dayLabel(date: string): string {
 </script>
 
 <template>
-    <Head title="My protocols" />
+    <Head
+        :title="
+            readOnly && patient
+                ? `Protocols: ${patient.full_name}`
+                : 'My protocols'
+        "
+    />
 
     <div class="flex h-full max-w-5xl flex-1 flex-col gap-6 p-4">
-        <div>
+        <div
+            v-if="readOnly && patient"
+            class="flex flex-wrap items-start justify-between gap-3"
+        >
+            <div>
+                <h1 class="text-xl font-semibold">
+                    Protocols: {{ patient.full_name }}
+                </h1>
+                <p class="text-sm text-muted-foreground">
+                    What the patient sees in their portal, with their ticks and
+                    notes. Read-only.
+                </p>
+            </div>
+            <Button variant="outline" as-child>
+                <Link :href="prescriptionsIndex(patient.id)">
+                    Manage prescriptions
+                </Link>
+            </Button>
+        </div>
+        <div v-else>
             <h1 class="text-xl font-semibold">My protocols</h1>
             <p class="text-sm text-muted-foreground">
                 Tick each item once you've done it for the day. You can catch up
@@ -142,7 +171,11 @@ function dayLabel(date: string): string {
             v-else-if="prescriptions.length === 0"
             class="rounded-lg border px-4 py-3 text-sm text-muted-foreground"
         >
-            You have no protocols in effect today.
+            {{
+                readOnly
+                    ? 'No protocols are in effect today.'
+                    : 'You have no protocols in effect today.'
+            }}
         </p>
 
         <template v-else>
@@ -256,7 +289,9 @@ function dayLabel(date: string): string {
                                     >
                                         <Checkbox
                                             :model-value="day.taken"
-                                            :disabled="saving !== null"
+                                            :disabled="
+                                                readOnly || saving !== null
+                                            "
                                             class="size-5"
                                             :aria-label="`${item.name}, ${dayLabel(day.date)}`"
                                             @update:model-value="
@@ -269,7 +304,8 @@ function dayLabel(date: string): string {
                                             :class="{
                                                 'text-primary': day.notes,
                                             }"
-                                            :aria-label="`${day.notes ? 'Edit' : 'Add'} a note for ${item.name}, ${dayLabel(day.date)}`"
+                                            v-if="!readOnly || day.notes"
+                                            :aria-label="`${readOnly ? 'Read' : day.notes ? 'Edit' : 'Add'} the note for ${item.name}, ${dayLabel(day.date)}`"
                                             :title="day.notes ?? 'Add a note'"
                                             @click="openNote(item, day)"
                                         >
@@ -289,7 +325,7 @@ function dayLabel(date: string): string {
                 </div>
             </section>
 
-            <p class="text-xs text-muted-foreground">
+            <p v-if="!readOnly" class="text-xs text-muted-foreground">
                 Your notes are shared with your care team. If something feels
                 wrong, contact the clinic rather than waiting for them to read a
                 note.
@@ -307,7 +343,10 @@ function dayLabel(date: string): string {
                 </DialogHeader>
                 <div class="grid gap-4">
                     <label class="flex items-center gap-2 text-sm">
-                        <Checkbox v-model="noteForm.taken" />
+                        <Checkbox
+                            v-model="noteForm.taken"
+                            :disabled="readOnly"
+                        />
                         Done this day
                     </label>
                     <div class="grid gap-2">
@@ -317,6 +356,7 @@ function dayLabel(date: string): string {
                             v-model="noteForm.notes"
                             rows="3"
                             maxlength="500"
+                            :readonly="readOnly"
                             :class="textareaClass"
                         />
                         <InputError
@@ -328,9 +368,15 @@ function dayLabel(date: string): string {
                 </div>
                 <DialogFooter class="gap-2">
                     <DialogClose as-child>
-                        <Button variant="secondary">Cancel</Button>
+                        <Button variant="secondary">
+                            {{ readOnly ? 'Close' : 'Cancel' }}
+                        </Button>
                     </DialogClose>
-                    <Button :disabled="noteForm.processing" @click="saveNote">
+                    <Button
+                        v-if="!readOnly"
+                        :disabled="noteForm.processing"
+                        @click="saveNote"
+                    >
                         Save
                     </Button>
                 </DialogFooter>

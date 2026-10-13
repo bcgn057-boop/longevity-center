@@ -151,6 +151,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('patients/{patient}/prescriptions', [PrescriptionController::class, 'index'])
             ->can('viewPrescriptions', Prescription::class)
             ->name('patients.prescriptions.index');
+        Route::get('patients/{patient}/protocols', [AdherenceController::class, 'show'])
+            ->can('viewPrescriptions', Prescription::class)
+            ->name('patients.protocols.show');
         Route::post('patients/{patient}/prescriptions', [PrescriptionController::class, 'store'])
             ->can('managePrescriptions', Prescription::class)
             ->name('patients.prescriptions.store');
