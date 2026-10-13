@@ -16,7 +16,8 @@ export type UserRole =
     | 'doctor'
     | 'practitioner'
     | 'lab_staff'
-    | 'patient';
+    | 'patient'
+    | 'compliance_officer';
 
 export type Auth = {
     user: User;

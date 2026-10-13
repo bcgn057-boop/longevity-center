@@ -1,0 +1,39 @@
+import {
+    CalendarCheck,
+    CalendarPlus,
+    ChartColumn,
+    ClipboardList,
+    Download,
+    FlaskConical,
+    KeyRound,
+    ListChecks,
+    ScrollText,
+    ShieldAlert,
+    ShieldCheck,
+    TestTubeDiagonal,
+    UserCog,
+    Users,
+} from '@lucide/vue';
+import type { Component } from 'vue';
+
+// Card and action keys sent by the server, to their icons.
+export const dashboardIcons: Record<string, Component> = {
+    patients: Users,
+    appointments: CalendarCheck,
+    book: CalendarPlus,
+    labs: FlaskConical,
+    lab_entry: TestTubeDiagonal,
+    review: FlaskConical,
+    results: FlaskConical,
+    protocol: ListChecks,
+    protocols: ClipboardList,
+    analytics: ChartColumn,
+    staff: UserCog,
+    audit: ScrollText,
+    export: Download,
+    phi: ScrollText,
+    denied: ShieldAlert,
+    sign_in: KeyRound,
+    exports: Download,
+    admin: ShieldCheck,
+};

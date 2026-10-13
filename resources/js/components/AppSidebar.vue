@@ -4,12 +4,14 @@ import {
     BookOpen,
     CalendarCheck,
     CalendarDays,
+    ChartColumn,
     FlaskConical,
     FolderGit2,
     LayoutGrid,
     ListChecks,
     ScrollText,
     ShieldCheck,
+    UserCog,
     UserRound,
     Users,
 } from '@lucide/vue';
@@ -30,7 +32,11 @@ import {
 import { dashboard, myProfile } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as labsIndex } from '@/routes/labs';
-import { index as auditLogs } from '@/routes/admin/audit-logs';
+import {
+    analytics as practiceAnalytics,
+    staffActivity,
+} from '@/routes/compliance';
+import { index as auditLogs } from '@/routes/compliance/audit-logs';
 import { index as appointmentsIndex } from '@/routes/appointments';
 import { index as myAppointments } from '@/routes/my-appointments';
 import { index as myProtocols } from '@/routes/my-protocols';
@@ -108,7 +114,24 @@ const mainNavItems = computed<NavItem[]>(() => {
         });
     }
 
-    if (role === 'super_admin') {
+    if (
+        role === 'super_admin' ||
+        role === 'clinic_admin' ||
+        role === 'compliance_officer'
+    ) {
+        items.push({
+            title: 'Practice analytics',
+            href: practiceAnalytics(),
+            icon: ChartColumn,
+        });
+    }
+
+    if (role === 'super_admin' || role === 'compliance_officer') {
+        items.push({
+            title: 'Staff activity',
+            href: staffActivity(),
+            icon: UserCog,
+        });
         items.push({
             title: 'Audit Log',
             href: auditLogs(),

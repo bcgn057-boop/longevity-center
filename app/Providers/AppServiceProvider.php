@@ -97,6 +97,18 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('access-lab', fn (User $user): bool => $user->hasRole(UserRole::LabStaff));
 
         Gate::define('access-patient-portal', fn (User $user): bool => $user->hasRole(UserRole::Patient));
+
+        // Compliance reporting. Super Admins also pass through the bypass above.
+        // The audit log holds patient identifiers and search terms, so only
+        // compliance officers read or export it; Clinic Admins see practice
+        // figures, which are counts only.
+        Gate::define('viewAuditLogs', fn (User $user): bool => $user->hasRole(UserRole::ComplianceOfficer));
+        Gate::define('exportAuditLogs', fn (User $user): bool => $user->hasRole(UserRole::ComplianceOfficer));
+        Gate::define('viewStaffActivity', fn (User $user): bool => $user->hasRole(UserRole::ComplianceOfficer));
+        Gate::define('viewPracticeAnalytics', fn (User $user): bool => $user->hasAnyRole(
+            UserRole::ComplianceOfficer,
+            UserRole::ClinicAdmin,
+        ));
     }
 
     /**

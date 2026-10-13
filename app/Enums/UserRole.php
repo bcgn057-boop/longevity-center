@@ -10,6 +10,7 @@ enum UserRole: string
     case Practitioner = 'practitioner';
     case LabStaff = 'lab_staff';
     case Patient = 'patient';
+    case ComplianceOfficer = 'compliance_officer';
 
     /**
      * Get the human-readable name of the role.
@@ -23,6 +24,7 @@ enum UserRole: string
             self::Practitioner => 'Practitioner',
             self::LabStaff => 'Lab Staff',
             self::Patient => 'Patient',
+            self::ComplianceOfficer => 'Compliance Officer',
         };
     }
 
@@ -39,6 +41,7 @@ enum UserRole: string
             self::Doctor,
             self::Practitioner,
             self::LabStaff,
+            self::ComplianceOfficer,
         ];
     }
 }

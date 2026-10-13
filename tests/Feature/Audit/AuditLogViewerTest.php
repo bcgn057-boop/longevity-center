@@ -8,7 +8,7 @@ use App\Services\AuditLogger;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('guests are redirected to the login page', function () {
-    $this->get(route('admin.audit-logs.index'))->assertRedirect(route('login'));
+    $this->get(route('compliance.audit-logs.index'))->assertRedirect(route('login'));
 });
 
 test('super admins can view the audit log', function () {
@@ -16,10 +16,10 @@ test('super admins can view the audit log', function () {
     app(AuditLogger::class)->record(AuditEvent::Login, actor: $admin);
 
     $this->actingAs($admin)
-        ->get(route('admin.audit-logs.index'))
+        ->get(route('compliance.audit-logs.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('admin/AuditLogs')
+            ->component('compliance/AuditLogs')
             ->has('logs.data', 2) // the login, plus this view itself
             ->where('logs.data.0.event', AuditEvent::AuditLogViewed->value)
             ->where('logs.data.1.event', AuditEvent::Login->value)
@@ -31,12 +31,12 @@ test('super admins can view the audit log', function () {
 test('other roles cannot view the audit log and the attempt is audited', function (UserRole $role) {
     $user = User::factory()->withRole($role)->create();
 
-    $this->actingAs($user)->get(route('admin.audit-logs.index'))->assertForbidden();
+    $this->actingAs($user)->get(route('compliance.audit-logs.index'))->assertForbidden();
 
     $entry = auditEntries(AuditEvent::AccessDenied)->sole();
 
     expect($entry->user_id)->toBe($user->id)
-        ->and($entry->metadata['path'])->toBe('/admin/audit-logs');
+        ->and($entry->metadata['path'])->toBe('/compliance/audit-logs');
     expect(auditEntries(AuditEvent::AuditLogViewed))->toHaveCount(0);
 })->with([
     'clinic admin' => UserRole::ClinicAdmin,
@@ -49,7 +49,7 @@ test('other roles cannot view the audit log and the attempt is audited', functio
 test('viewing the audit log is itself audited, including the filters used', function () {
     $admin = User::factory()->withRole(UserRole::SuperAdmin)->create();
 
-    $this->actingAs($admin)->get(route('admin.audit-logs.index', ['event' => 'auth.login']));
+    $this->actingAs($admin)->get(route('compliance.audit-logs.index', ['event' => 'auth.login']));
 
     $entry = auditEntries(AuditEvent::AuditLogViewed)->sole();
 
@@ -68,7 +68,7 @@ test('the audit log can be filtered by event and user', function () {
     $audit->record(AuditEvent::Login, actor: $bob);
 
     $this->actingAs($admin)
-        ->get(route('admin.audit-logs.index', ['event' => 'auth.login', 'user_id' => $alice->id]))
+        ->get(route('compliance.audit-logs.index', ['event' => 'auth.login', 'user_id' => $alice->id]))
         ->assertInertia(fn (Assert $page) => $page
             ->has('logs.data', 1)
             ->where('logs.data.0.user_id', $alice->id)
@@ -81,7 +81,7 @@ test('invalid filters are rejected', function (array $query, string $field) {
     $admin = User::factory()->withRole(UserRole::SuperAdmin)->create();
 
     $this->actingAs($admin)
-        ->get(route('admin.audit-logs.index', $query))
+        ->get(route('compliance.audit-logs.index', $query))
         ->assertSessionHasErrors($field);
 
     expect(auditEntries(AuditEvent::AuditLogViewed))->toHaveCount(0);
@@ -100,7 +100,7 @@ test('the audit log is paginated', function () {
     }
 
     $this->actingAs($admin)
-        ->get(route('admin.audit-logs.index'))
+        ->get(route('compliance.audit-logs.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('logs.data', 50)
             ->where('logs.total', 61)
@@ -122,7 +122,7 @@ function inertiaHeaders(array $only = []): array
     ];
 
     if ($only !== []) {
-        $headers['X-Inertia-Partial-Component'] = 'admin/AuditLogs';
+        $headers['X-Inertia-Partial-Component'] = 'compliance/AuditLogs';
         $headers['X-Inertia-Partial-Data'] = implode(',', $only);
     }
 
@@ -137,10 +137,10 @@ test('filters are applied on an inertia partial reload', function () {
     $audit->record(AuditEvent::Login, actor: $alice);
     $audit->record(AuditEvent::Logout, actor: $alice);
 
-    $this->actingAs($admin)->get(route('admin.audit-logs.index'));
+    $this->actingAs($admin)->get(route('compliance.audit-logs.index'));
 
     $response = $this->withHeaders(inertiaHeaders(['logs', 'filters']))
-        ->get(route('admin.audit-logs.index', ['event' => 'auth.logout', 'user_id' => $alice->id]))
+        ->get(route('compliance.audit-logs.index', ['event' => 'auth.logout', 'user_id' => $alice->id]))
         ->assertOk()
         ->json('props');
 
@@ -153,12 +153,12 @@ test('filters are applied on an inertia partial reload', function () {
 test('partial reloads after the initial page load are not audited as new views', function () {
     $admin = User::factory()->withRole(UserRole::SuperAdmin)->create();
 
-    $this->actingAs($admin)->get(route('admin.audit-logs.index'));
+    $this->actingAs($admin)->get(route('compliance.audit-logs.index'));
 
     // Filter, reset, and page: all partial reloads.
-    $this->withHeaders(inertiaHeaders(['logs', 'filters']))->get(route('admin.audit-logs.index', ['event' => 'auth.login']))->assertOk();
-    $this->withHeaders(inertiaHeaders(['logs', 'filters']))->get(route('admin.audit-logs.index'))->assertOk();
-    $this->withHeaders(inertiaHeaders(['logs', 'filters']))->get(route('admin.audit-logs.index', ['page' => 2]))->assertOk();
+    $this->withHeaders(inertiaHeaders(['logs', 'filters']))->get(route('compliance.audit-logs.index', ['event' => 'auth.login']))->assertOk();
+    $this->withHeaders(inertiaHeaders(['logs', 'filters']))->get(route('compliance.audit-logs.index'))->assertOk();
+    $this->withHeaders(inertiaHeaders(['logs', 'filters']))->get(route('compliance.audit-logs.index', ['page' => 2]))->assertOk();
 
     expect(auditEntries(AuditEvent::AuditLogViewed))->toHaveCount(1);
 });
@@ -166,8 +166,8 @@ test('partial reloads after the initial page load are not audited as new views',
 test('full inertia visits to the audit log are audited', function () {
     $admin = User::factory()->withRole(UserRole::SuperAdmin)->create();
 
-    $this->actingAs($admin)->get(route('admin.audit-logs.index'));
-    $this->withHeaders(inertiaHeaders())->get(route('admin.audit-logs.index'))->assertOk();
+    $this->actingAs($admin)->get(route('compliance.audit-logs.index'));
+    $this->withHeaders(inertiaHeaders())->get(route('compliance.audit-logs.index'))->assertOk();
 
     expect(auditEntries(AuditEvent::AuditLogViewed))->toHaveCount(2);
 });
@@ -178,7 +178,7 @@ test('a forged partial reload header cannot be used to read the log without bein
     // No prior full page load in this session.
     $this->actingAs($admin)
         ->withHeaders(inertiaHeaders(['logs', 'filters']))
-        ->get(route('admin.audit-logs.index'))
+        ->get(route('compliance.audit-logs.index'))
         ->assertOk();
 
     expect(auditEntries(AuditEvent::AuditLogViewed))->toHaveCount(1);
@@ -187,10 +187,10 @@ test('a forged partial reload header cannot be used to read the log without bein
 test('a partial reload header for another page does not skip auditing', function () {
     $admin = User::factory()->withRole(UserRole::SuperAdmin)->create();
 
-    $this->actingAs($admin)->get(route('admin.audit-logs.index'));
+    $this->actingAs($admin)->get(route('compliance.audit-logs.index'));
 
     $this->withHeaders([...inertiaHeaders(['logs']), 'X-Inertia-Partial-Component' => 'Dashboard'])
-        ->get(route('admin.audit-logs.index'));
+        ->get(route('compliance.audit-logs.index'));
 
     expect(auditEntries(AuditEvent::AuditLogViewed))->toHaveCount(2);
 });

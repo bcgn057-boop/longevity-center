@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\AdherenceController;
-use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\CareReminderController;
+use App\Http\Controllers\Compliance\AnalyticsController;
+use App\Http\Controllers\Compliance\AuditLogController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LabReportController;
 use App\Http\Controllers\MyAppointmentController;
 use App\Http\Controllers\MyLabResultsController;
@@ -23,7 +25,7 @@ use Illuminate\Support\Facades\Route;
 Route::inertia('/', 'Welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
@@ -36,10 +38,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.')
         ->group(function () {
             Route::inertia('/', 'admin/Dashboard')->name('dashboard');
+        });
 
+    // Compliance reporting. The role check runs first and is audited; each
+    // page then checks its own ability.
+    Route::middleware('role:super_admin,clinic_admin,compliance_officer')
+        ->prefix('compliance')
+        ->name('compliance.')
+        ->group(function () {
             Route::get('audit-logs', [AuditLogController::class, 'index'])
-                ->middleware('role:super_admin')
+                ->can('viewAuditLogs')
                 ->name('audit-logs.index');
+            Route::get('audit-logs/export', [AuditLogController::class, 'export'])
+                ->can('exportAuditLogs')
+                ->name('audit-logs.export');
+            Route::get('analytics', [AnalyticsController::class, 'practice'])
+                ->can('viewPracticeAnalytics')
+                ->name('analytics');
+            Route::get('staff-activity', [AnalyticsController::class, 'staff'])
+                ->can('viewStaffActivity')
+                ->name('staff-activity');
         });
 
     // Staff patient records. The role check runs before route model binding,

@@ -77,6 +77,44 @@ enum AuditEvent: string
     case NotificationConsentGranted = 'notification.consent_granted';
     case NotificationConsentWithdrawn = 'notification.consent_withdrawn';
 
-    // Audit log access
+    // Audit log access and compliance reporting
     case AuditLogViewed = 'audit.viewed';
+    case AuditLogExported = 'audit.exported';
+    case AnalyticsViewed = 'analytics.viewed';
+
+    /**
+     * The compliance-report group the event belongs to. Every read of a
+     * patient's records is PHI access, whatever the record type.
+     */
+    public function category(): AuditCategory
+    {
+        if (in_array($this, [
+            self::PatientViewed, self::PatientSearched, self::AppointmentViewed, self::AppointmentListed,
+            self::LabReportListed, self::LabReportViewed, self::PrescriptionListed,
+        ], true)) {
+            return AuditCategory::PhiAccess;
+        }
+
+        return match (true) {
+            $this === self::AccessDenied => AuditCategory::Security,
+            str_starts_with($this->value, 'auth.') => AuditCategory::Authentication,
+            str_starts_with($this->value, 'user.') => AuditCategory::Account,
+            str_starts_with($this->value, 'patient.') => AuditCategory::PatientRecords,
+            str_starts_with($this->value, 'appointment.') => AuditCategory::Appointments,
+            str_starts_with($this->value, 'lab_') => AuditCategory::Labs,
+            str_starts_with($this->value, 'prescription.'),
+            str_starts_with($this->value, 'protocol_') => AuditCategory::Prescriptions,
+            str_starts_with($this->value, 'care_reminder.') => AuditCategory::CareReminders,
+            str_starts_with($this->value, 'notification.') => AuditCategory::Consent,
+            default => AuditCategory::Compliance,
+        };
+    }
+
+    /**
+     * @return array<int, self>
+     */
+    public static function inCategory(AuditCategory $category): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $event) => $event->category() === $category));
+    }
 }
