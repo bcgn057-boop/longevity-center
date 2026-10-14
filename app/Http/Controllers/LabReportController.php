@@ -8,6 +8,7 @@ use App\Enums\UserRole;
 use App\Http\Requests\Labs\AddLabResultsRequest;
 use App\Http\Requests\Labs\CorrectLabResultRequest;
 use App\Http\Requests\Labs\StoreLabReportRequest;
+use App\Labs\LabAttachmentStore;
 use App\Labs\LabPresenter;
 use App\Labs\LabReportService;
 use App\Models\LabReport;
@@ -18,6 +19,7 @@ use App\Services\AuditLogger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -102,6 +104,7 @@ class LabReportController extends Controller
             $request->validated('notes'),
             $request->results(),
             $this->user($request),
+            $request->file('attachment'),
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Lab report saved and sent for review.')]);
@@ -125,6 +128,23 @@ class LabReportController extends Controller
                 'viewPatient' => $user->can('view', $labReport->patient),
             ],
         ]);
+    }
+
+    /**
+     * Download the lab's original PDF. Authorized on the route; audited
+     * here, by report id only.
+     */
+    public function attachment(LabReport $labReport, LabAttachmentStore $attachments): HttpResponse
+    {
+        abort_unless($labReport->hasAttachment(), 404);
+
+        $response = $attachments->download($labReport);
+
+        $this->audit->record(AuditEvent::LabReportAttachmentDownloaded, auditable: $labReport, metadata: [
+            'patient_id' => $labReport->patient_id,
+        ]);
+
+        return $response;
     }
 
     public function addResults(AddLabResultsRequest $request, LabReport $labReport): RedirectResponse

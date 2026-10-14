@@ -10,8 +10,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Presents an appointment with its times in the clinic's timezone, so pages
  * never depend on the browser's timezone.
  *
- * The reason and cancellation reason are only included for viewers allowed
- * to read them, and never in list rows.
+ * The type (a general visit or a therapy) is shown to everyone who can see
+ * the appointment, as the front desk schedules by it. The free-text reason
+ * and cancellation reason are only included for viewers allowed to read
+ * them, and never in list rows.
  *
  * @mixin Appointment
  */
@@ -51,6 +53,8 @@ class AppointmentResource extends JsonResource
                 'id' => $this->doctor->id,
                 'name' => $this->doctor->name,
             ],
+            'type' => $this->type->value,
+            'type_label' => $this->type->label(),
             'date' => $start->format('Y-m-d'),
             'date_label' => $start->format('D j M Y'),
             'start' => $start->format('H:i'),

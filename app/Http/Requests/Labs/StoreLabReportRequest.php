@@ -5,6 +5,7 @@ namespace App\Http\Requests\Labs;
 use App\Labs\LabResultRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -28,6 +29,8 @@ class StoreLabReportRequest extends FormRequest
             'collected_time' => ['required', 'date_format:H:i'],
             'lab_name' => ['nullable', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            // The lab's original report: a PDF of up to 10 MB.
+            'attachment' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
             'results' => ['required', 'array', 'list', 'min:1', 'max:'.self::MAX_RESULTS],
             'results.*' => ['array'],
             ...LabResultRules::row('results.*.'),
@@ -47,6 +50,9 @@ class StoreLabReportRequest extends FormRequest
         return [
             'patient_id.required' => 'Choose a patient.',
             'patient_id.exists' => 'Choose an active patient.',
+            'attachment.mimes' => 'Attach the report as a PDF.',
+            'attachment.max' => 'The PDF must be 10 MB or smaller.',
+            'attachment.uploaded' => 'The PDF could not be uploaded. It may be larger than the server accepts.',
             'results.required' => 'Add at least one result.',
             'results.min' => 'Add at least one result.',
             'results.*.biomarker_id.distinct' => 'This biomarker is already in the report.',
@@ -62,6 +68,14 @@ class StoreLabReportRequest extends FormRequest
         return [function (Validator $validator) {
             if ($validator->errors()->isNotEmpty()) {
                 return;
+            }
+
+            // The type check trusts what PHP detects; also insist the file
+            // really starts like a PDF.
+            $attachment = $this->file('attachment');
+
+            if ($attachment instanceof UploadedFile && ! str_starts_with((string) file_get_contents($attachment->getRealPath(), length: 5), '%PDF-')) {
+                $validator->errors()->add('attachment', 'Attach the report as a PDF.');
             }
 
             if ($this->collectedAt()->isFuture()) {

@@ -30,6 +30,10 @@ use LogicException;
  * @property string|null $lab_name
  * @property LabReportStatus $status
  * @property string|null $notes
+ * @property string|null $attachment_path
+ * @property string|null $attachment_name
+ * @property int|null $attachment_size
+ * @property string|null $attachment_sha256
  * @property int|null $entered_by
  * @property int|null $reviewed_by
  * @property Carbon|null $reviewed_at
@@ -41,7 +45,7 @@ use LogicException;
  */
 #[ObservedBy(LabReportObserver::class)]
 #[Fillable(['collected_at', 'lab_name', 'notes'])]
-#[Hidden(['notes'])]
+#[Hidden(['notes', 'attachment_path', 'attachment_name', 'attachment_sha256'])]
 class LabReport extends Model
 {
     /** @use HasFactory<LabReportFactory> */
@@ -98,6 +102,11 @@ class LabReport extends Model
         return $this->results()->current();
     }
 
+    public function hasAttachment(): bool
+    {
+        return $this->attachment_path !== null;
+    }
+
     public function isReleased(): bool
     {
         return $this->status === LabReportStatus::Released;
@@ -141,6 +150,8 @@ class LabReport extends Model
             'collected_at' => UtcDateTime::class,
             'status' => LabReportStatus::class,
             'notes' => 'encrypted',
+            'attachment_name' => 'encrypted',
+            'attachment_size' => 'integer',
             'reviewed_at' => 'datetime',
         ];
     }

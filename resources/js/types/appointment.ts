@@ -10,6 +10,9 @@ export type Appointment = {
     start: string;
     end: string;
     duration_minutes: number;
+    // A general visit or a longevity therapy.
+    type: string;
+    type_label: string;
     status: AppointmentStatus;
     status_label: string;
     has_started: boolean;
@@ -30,3 +33,5 @@ export type DoctorOption = {
     id: number;
     name: string;
 };
+
+export type AppointmentTypeOption = { value: string; label: string };

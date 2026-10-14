@@ -18,7 +18,11 @@ class LabReportObserver
         $this->audit->record(
             AuditEvent::LabReportCreated,
             auditable: $report,
-            metadata: ['patient_id' => $report->patient_id],
+            metadata: [
+                'patient_id' => $report->patient_id,
+                // Whether a PDF came with it; never its name.
+                ...($report->hasAttachment() ? ['attachment' => true] : []),
+            ],
         );
     }
 

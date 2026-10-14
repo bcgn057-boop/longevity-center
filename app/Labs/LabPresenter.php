@@ -36,6 +36,11 @@ final class LabPresenter
         return [
             ...self::summary($report),
             'notes' => $report->notes,
+            'attachment' => $report->hasAttachment() ? [
+                'name' => $report->attachment_name,
+                'size' => $report->attachment_size,
+                'url' => route('labs.attachment', $report),
+            ] : null,
             'reviewed_by' => $report->reviewer?->name,
             'reviewed_at' => $report->reviewed_at?->copy()->setTimezone(self::timezone())->format('D j M Y H:i'),
             'groups' => $groups->map(fn (Collection $items, string $category) => [
@@ -69,6 +74,7 @@ final class LabPresenter
             'status_label' => $report->status->label(),
             'entered_by' => $report->enteredBy?->name,
             'results_count' => $report->getAttribute('results_count'),
+            'has_attachment' => $report->hasAttachment(),
         ];
     }
 

@@ -8,8 +8,10 @@ use App\Models\Patient;
 use App\Models\User;
 use App\Reminders\ReminderDispatcher;
 use Carbon\CarbonInterface;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Records lab reports and their results. Each write runs in a transaction,
@@ -17,27 +19,43 @@ use Illuminate\Validation\ValidationException;
  */
 class LabReportService
 {
-    public function __construct(private readonly ReminderDispatcher $dispatcher) {}
+    public function __construct(
+        private readonly ReminderDispatcher $dispatcher,
+        private readonly LabAttachmentStore $attachments,
+    ) {}
 
     /**
      * @param  array<int, array<string, mixed>>  $results
+     * @param  UploadedFile|null  $attachment  the lab's original PDF, already validated
      */
-    public function create(Patient $patient, CarbonInterface $collectedAt, ?string $labName, ?string $notes, array $results, User $by): LabReport
+    public function create(Patient $patient, CarbonInterface $collectedAt, ?string $labName, ?string $notes, array $results, User $by, ?UploadedFile $attachment = null): LabReport
     {
-        return DB::transaction(function () use ($patient, $collectedAt, $labName, $notes, $results, $by) {
-            $report = new LabReport([
-                'collected_at' => $collectedAt,
-                'lab_name' => $this->blankToNull($labName),
-                'notes' => $this->blankToNull($notes),
-            ]);
-            $report->patient_id = $patient->id;
-            $report->entered_by = $by->id;
-            $report->save();
+        // Stored before the transaction, and removed again if the report is not saved.
+        $stored = $attachment ? $this->attachments->store($attachment) : [];
 
-            $this->insertResults($report, $results, $by);
+        try {
+            return DB::transaction(function () use ($patient, $collectedAt, $labName, $notes, $results, $by, $stored) {
+                $report = new LabReport([
+                    'collected_at' => $collectedAt,
+                    'lab_name' => $this->blankToNull($labName),
+                    'notes' => $this->blankToNull($notes),
+                ]);
+                $report->forceFill($stored);
+                $report->patient_id = $patient->id;
+                $report->entered_by = $by->id;
+                $report->save();
 
-            return $report;
-        });
+                $this->insertResults($report, $results, $by);
+
+                return $report;
+            });
+        } catch (Throwable $e) {
+            if (isset($stored['attachment_path'])) {
+                $this->attachments->discard($stored['attachment_path']);
+            }
+
+            throw $e;
+        }
     }
 
     /**

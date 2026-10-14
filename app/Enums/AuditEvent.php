@@ -56,6 +56,7 @@ enum AuditEvent: string
     case LabReportViewed = 'lab_report.viewed';
     case LabReportUpdated = 'lab_report.updated';
     case LabReportReleased = 'lab_report.released';
+    case LabReportAttachmentDownloaded = 'lab_report.attachment_downloaded';
     case LabResultRecorded = 'lab_result.recorded';
     case LabResultCorrected = 'lab_result.corrected';
 
@@ -90,7 +91,7 @@ enum AuditEvent: string
     {
         if (in_array($this, [
             self::PatientViewed, self::PatientSearched, self::AppointmentViewed, self::AppointmentListed,
-            self::LabReportListed, self::LabReportViewed, self::PrescriptionListed,
+            self::LabReportListed, self::LabReportViewed, self::LabReportAttachmentDownloaded, self::PrescriptionListed,
         ], true)) {
             return AuditCategory::PhiAccess;
         }

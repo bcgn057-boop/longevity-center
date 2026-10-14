@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AppointmentStatus;
+use App\Enums\AppointmentType;
 use App\Enums\AuditEvent;
 use App\Http\Requests\Appointments\CancelAppointmentRequest;
 use App\Http\Requests\Appointments\StoreAppointmentRequest;
@@ -110,6 +111,7 @@ class AppointmentController extends Controller
             // Only filled when the page asks for it while staff search for a patient.
             'patientOptions' => fn () => $this->searchPatients($validated['patient_search'] ?? null),
             'doctors' => $this->doctorOptions(),
+            'types' => AppointmentType::options(),
             'canEditReason' => (bool) $request->user()?->can('viewReason', Appointment::class),
             'timezone' => config('clinic.timezone'),
             'today' => Carbon::today((string) config('clinic.timezone'))->format('Y-m-d'),
@@ -160,6 +162,7 @@ class AppointmentController extends Controller
         return Inertia::render('appointments/Edit', [
             'appointment' => $this->present($request, $appointment),
             'doctors' => $this->doctorOptions(),
+            'types' => AppointmentType::options(),
             'canEditReason' => (bool) $request->user()?->can('viewReason', $appointment),
             'timezone' => config('clinic.timezone'),
             'today' => Carbon::today((string) config('clinic.timezone'))->format('Y-m-d'),

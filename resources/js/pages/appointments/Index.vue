@@ -167,6 +167,7 @@ function shift(direction: 1 | -1): void {
                     <tr>
                         <th class="px-3 py-2 font-medium">Date</th>
                         <th class="px-3 py-2 font-medium">Time</th>
+                        <th class="px-3 py-2 font-medium">Type</th>
                         <th class="px-3 py-2 font-medium">Patient</th>
                         <th class="px-3 py-2 font-medium">Clinician</th>
                         <th class="px-3 py-2 font-medium">Status</th>
@@ -175,7 +176,7 @@ function shift(direction: 1 | -1): void {
                 <tbody>
                     <tr v-if="appointments.data.length === 0">
                         <td
-                            colspan="5"
+                            colspan="6"
                             class="px-3 py-6 text-center text-muted-foreground"
                         >
                             No appointments in this range.
@@ -195,6 +196,7 @@ function shift(direction: 1 | -1): void {
                                 {{ appointment.start }}–{{ appointment.end }}
                             </Link>
                         </td>
+                        <td class="px-3 py-2">{{ appointment.type_label }}</td>
                         <td class="px-3 py-2">
                             {{ appointment.patient.full_name }}
                             <span

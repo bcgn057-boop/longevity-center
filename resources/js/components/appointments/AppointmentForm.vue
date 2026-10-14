@@ -5,13 +5,19 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Appointment, DoctorOption, PatientOption } from '@/types';
+import type {
+    Appointment,
+    AppointmentTypeOption,
+    DoctorOption,
+    PatientOption,
+} from '@/types';
 
 const props = defineProps<{
     appointment?: Appointment;
     // When booking, the patient chosen on the page; ignored when rescheduling.
     patient: PatientOption | null;
     doctors: DoctorOption[];
+    types: AppointmentTypeOption[];
     canEditReason: boolean;
     timezone: string;
     today: string;
@@ -31,6 +37,7 @@ const textareaClass =
 type FormData = {
     patient_id?: number | null;
     doctor_id: string;
+    type: string;
     date: string;
     start_time: string;
     end_time: string;
@@ -39,6 +46,7 @@ type FormData = {
 
 const initial: FormData = {
     doctor_id: props.appointment?.doctor.id.toString() ?? '',
+    type: props.appointment?.type ?? '',
     date: props.appointment?.date ?? '',
     start_time: props.appointment?.start ?? '',
     end_time: props.appointment?.end ?? '',
@@ -175,6 +183,21 @@ function submit(): void {
                 </option>
             </select>
             <InputError :message="form.errors.doctor_id" />
+        </div>
+
+        <div class="grid gap-2">
+            <Label for="type">Appointment type</Label>
+            <select id="type" v-model="form.type" required :class="selectClass">
+                <option value="" disabled>Select a visit or therapy…</option>
+                <option
+                    v-for="option in types"
+                    :key="option.value"
+                    :value="option.value"
+                >
+                    {{ option.label }}
+                </option>
+            </select>
+            <InputError :message="form.errors.type" />
         </div>
 
         <div class="grid gap-4 sm:grid-cols-3">

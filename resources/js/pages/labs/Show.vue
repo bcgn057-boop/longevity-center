@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Download, FileText } from '@lucide/vue';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import CorrectResultDialog from '@/components/labs/CorrectResultDialog.vue';
@@ -56,6 +57,12 @@ function addResults(): void {
         preserveScroll: true,
         onSuccess: () => addForm.reset(),
     });
+}
+
+function formatSize(bytes: number): string {
+    return bytes >= 1024 * 1024
+        ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 function submitRelease(): void {
@@ -142,6 +149,23 @@ function submitRelease(): void {
                 </DialogContent>
             </Dialog>
         </div>
+
+        <a
+            v-if="report.attachment"
+            :href="report.attachment.url"
+            download
+            class="flex w-fit items-center gap-3 rounded-lg border px-3 py-2 text-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+            <FileText class="size-4 text-muted-foreground" aria-hidden="true" />
+            <span>
+                <span class="font-medium">Original report</span>
+                <span class="ml-2 text-muted-foreground">
+                    {{ report.attachment.name }} ·
+                    {{ formatSize(report.attachment.size) }}
+                </span>
+            </span>
+            <Download class="size-4 text-muted-foreground" aria-hidden="true" />
+        </a>
 
         <p v-if="report.notes" class="text-sm whitespace-pre-line">
             <span class="text-muted-foreground">Notes:</span> {{ report.notes }}

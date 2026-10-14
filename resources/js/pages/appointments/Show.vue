@@ -98,6 +98,10 @@ function submitComplete(): void {
                 <dt class="text-muted-foreground">Clinician</dt>
                 <dd>{{ appointment.doctor.name }}</dd>
             </div>
+            <div>
+                <dt class="text-muted-foreground">Type</dt>
+                <dd>{{ appointment.type_label }}</dd>
+            </div>
             <div v-if="'reason' in appointment" class="sm:col-span-2">
                 <dt class="text-muted-foreground">Reason for visit</dt>
                 <dd class="whitespace-pre-line">

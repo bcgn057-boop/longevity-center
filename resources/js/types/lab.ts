@@ -25,6 +25,7 @@ export type LabReportSummary = {
     status_label: string;
     entered_by: string | null;
     results_count: number | null;
+    has_attachment: boolean;
 };
 
 export type LabResultVersion = {
@@ -51,6 +52,8 @@ export type LabResultItem = LabResultVersion & {
 
 export type LabReport = LabReportSummary & {
     notes: string | null;
+    // The lab's original PDF, if one was attached.
+    attachment: { name: string; size: number; url: string } | null;
     reviewed_by: string | null;
     reviewed_at: string | null;
     groups: { category: string; label: string; results: LabResultItem[] }[];
@@ -104,6 +107,8 @@ export type PatientReportSummary = {
 };
 
 export type PatientReport = PatientReportSummary & {
+    // The lab's original PDF, if one was attached.
+    attachment_url: string | null;
     groups: {
         category: string;
         label: string;

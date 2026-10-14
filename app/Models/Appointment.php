@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\UtcDateTime;
 use App\Enums\AppointmentStatus;
+use App\Enums\AppointmentType;
 use App\Exceptions\InvalidAppointmentTransitionException;
 use App\Exceptions\MedicalRecordRetentionException;
 use App\Observers\AppointmentObserver;
@@ -28,6 +29,7 @@ use InvalidArgumentException;
  * @property int $id
  * @property int $patient_id
  * @property int $doctor_id
+ * @property AppointmentType $type
  * @property Carbon $start_time
  * @property Carbon $end_time
  * @property AppointmentStatus $status
@@ -43,7 +45,7 @@ use InvalidArgumentException;
  * @property-read User|null $canceller
  */
 #[ObservedBy(AppointmentObserver::class)]
-#[Fillable(['patient_id', 'doctor_id', 'start_time', 'end_time', 'reason'])]
+#[Fillable(['patient_id', 'doctor_id', 'type', 'start_time', 'end_time', 'reason'])]
 #[Hidden(['reason', 'cancellation_reason'])]
 class Appointment extends Model
 {
@@ -57,6 +59,7 @@ class Appointment extends Model
      */
     protected $attributes = [
         'status' => AppointmentStatus::Scheduled->value,
+        'type' => AppointmentType::GeneralVisit->value,
     ];
 
     /**
@@ -193,6 +196,7 @@ class Appointment extends Model
             'start_time' => UtcDateTime::class,
             'end_time' => UtcDateTime::class,
             'status' => AppointmentStatus::class,
+            'type' => AppointmentType::class,
             'reason' => 'encrypted',
             'cancelled_at' => 'datetime',
             'cancellation_reason' => 'encrypted',

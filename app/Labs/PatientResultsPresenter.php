@@ -86,6 +86,9 @@ final class PatientResultsPresenter
 
         return [
             ...self::summary($report),
+            // The lab's original document is the patient's record too. Its
+            // name and size stay internal; only a link is shared.
+            'attachment_url' => $report->hasAttachment() ? route('my-results.attachment', $report->id) : null,
             'groups' => $groups->map(fn (Collection $results, string $category) => [
                 'category' => $category,
                 'label' => BiomarkerCategory::from($category)->label(),

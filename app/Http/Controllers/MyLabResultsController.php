@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Enums\AuditEvent;
 use App\Enums\LabReportStatus;
+use App\Labs\LabAttachmentStore;
 use App\Labs\PatientResultsPresenter;
 use App\Models\LabReport;
 use App\Models\Patient;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -52,15 +54,30 @@ class MyLabResultsController extends Controller
         ]);
     }
 
+    /**
+     * The lab's original PDF for one of the patient's own released reports.
+     * Looked up like show(), so anything else is a plain 404.
+     */
+    public function attachment(Request $request, int $report, LabAttachmentStore $attachments): HttpResponse
+    {
+        $labReport = $this->ownReleased($request, $report);
+        abort_unless($labReport->hasAttachment(), 404);
+
+        Gate::authorize('viewLabReport', $labReport);
+
+        $response = $attachments->download($labReport);
+
+        $this->audit->record(AuditEvent::LabReportAttachmentDownloaded, auditable: $labReport, metadata: [
+            'context' => 'self',
+            'patient_id' => $labReport->patient_id,
+        ]);
+
+        return $response;
+    }
+
     public function show(Request $request, int $report): Response
     {
-        $patient = $request->user()?->patient;
-        abort_unless($patient instanceof Patient, 404);
-
-        $labReport = $patient->labReports()
-            ->where('status', LabReportStatus::Released)
-            ->with('results.biomarker')
-            ->findOrFail($report);
+        $labReport = $this->ownReleased($request, $report);
 
         Gate::authorize('viewLabReport', $labReport);
 
@@ -69,5 +86,19 @@ class MyLabResultsController extends Controller
         return Inertia::render('labs/MyReport', [
             'report' => PatientResultsPresenter::report($labReport),
         ]);
+    }
+
+    /**
+     * One of the signed-in patient's own released reports, or a 404.
+     */
+    private function ownReleased(Request $request, int $report): LabReport
+    {
+        $patient = $request->user()?->patient;
+        abort_unless($patient instanceof Patient, 404);
+
+        return $patient->labReports()
+            ->where('status', LabReportStatus::Released)
+            ->with('results.biomarker')
+            ->findOrFail($report);
     }
 }

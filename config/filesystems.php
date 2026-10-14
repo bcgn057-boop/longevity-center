@@ -38,6 +38,18 @@ return [
             'report' => false,
         ],
 
+        // Original lab report PDFs. Never served over the web: files are
+        // encrypted with the app key and only read back by an audited
+        // download for authorised staff.
+        'lab_attachments' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/lab-reports'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

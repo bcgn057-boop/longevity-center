@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AppointmentType;
 use App\Models\Appointment;
 use App\Models\User;
 use Closure;
@@ -26,7 +27,7 @@ class AppointmentScheduler
     /**
      * Book a new appointment.
      *
-     * @param  array{doctor_id: int, start_time: Carbon, end_time: Carbon, reason?: string|null}  $attributes
+     * @param  array{doctor_id: int, type: AppointmentType, start_time: Carbon, end_time: Carbon, reason?: string|null}  $attributes
      *
      * @throws ValidationException when the time clashes or the schedule is busy
      */
@@ -44,9 +45,9 @@ class AppointmentScheduler
     }
 
     /**
-     * Change an appointment's clinician, time or reason.
+     * Change an appointment's clinician, type, time or reason.
      *
-     * @param  array{doctor_id: int, start_time: Carbon, end_time: Carbon, reason?: string|null}  $attributes
+     * @param  array{doctor_id: int, type: AppointmentType, start_time: Carbon, end_time: Carbon, reason?: string|null}  $attributes
      *
      * @throws ValidationException when the time clashes or the schedule is busy
      */

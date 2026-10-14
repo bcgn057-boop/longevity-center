@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Paperclip } from '@lucide/vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
@@ -116,7 +117,14 @@ function apply(): void {
                                 {{ report.patient.medical_record_number }}
                             </span>
                         </td>
-                        <td class="px-3 py-2">{{ report.lab_name ?? '—' }}</td>
+                        <td class="px-3 py-2">
+                            {{ report.lab_name ?? '—' }}
+                            <Paperclip
+                                v-if="report.has_attachment"
+                                class="ml-1 inline size-3.5 text-muted-foreground"
+                                aria-label="PDF attached"
+                            />
+                        </td>
                         <td class="px-3 py-2">{{ report.results_count }}</td>
                         <td class="px-3 py-2">
                             <Badge

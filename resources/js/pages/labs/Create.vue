@@ -35,6 +35,8 @@ const form = useForm<{
     collected_time: string;
     lab_name: string;
     notes: string;
+    // The lab's original report, sent as multipart form data when present.
+    attachment: File | null;
     results: ResultRow[];
 }>({
     patient_id: props.patient?.id ?? null,
@@ -42,6 +44,7 @@ const form = useForm<{
     collected_time: '08:00',
     lab_name: '',
     notes: '',
+    attachment: null,
     results: [emptyResultRow()],
 });
 
@@ -68,6 +71,20 @@ function choose(patient: PatientOption | null): void {
     selected.value = patient;
     form.patient_id = patient?.id ?? null;
     search.value = '';
+}
+
+const MAX_PDF_BYTES = 10 * 1024 * 1024;
+const attachmentError = ref<string | null>(null);
+
+function chooseAttachment(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+
+    // Checked here for a quick answer; the server checks again.
+    attachmentError.value =
+        file && file.size > MAX_PDF_BYTES
+            ? 'The PDF must be 10 MB or smaller.'
+            : null;
+    form.attachment = file;
 }
 
 function submit(): void {
@@ -177,6 +194,24 @@ const errors = (): Record<string, string | undefined> =>
                     placeholder="e.g. Patient was not fasting"
                 />
                 <InputError :message="form.errors.notes" />
+            </div>
+            <div class="grid gap-2 sm:col-span-3">
+                <Label for="attachment">Original report (PDF, optional)</Label>
+                <Input
+                    id="attachment"
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    aria-describedby="attachment-help"
+                    class="cursor-pointer file:mr-3 file:cursor-pointer"
+                    @change="chooseAttachment"
+                />
+                <p id="attachment-help" class="text-xs text-muted-foreground">
+                    Up to 10 MB. Stored encrypted and only available to lab
+                    staff, doctors and practitioners.
+                </p>
+                <InputError
+                    :message="attachmentError ?? form.errors.attachment"
+                />
             </div>
         </section>
 

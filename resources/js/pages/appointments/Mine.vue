@@ -50,6 +50,7 @@ defineOptions({
                                 {{ appointment.date_label }},
                                 {{ appointment.start }}–{{ appointment.end }}
                             </div>
+                            <div>{{ appointment.type_label }}</div>
                             <div class="text-muted-foreground">
                                 With {{ appointment.doctor.name }}
                             </div>
@@ -84,7 +85,8 @@ defineOptions({
                     >
                         <span>
                             {{ appointment.date_label }},
-                            {{ appointment.start }} with
+                            {{ appointment.start }},
+                            {{ appointment.type_label }} with
                             {{ appointment.doctor.name }}
                         </span>
                         <StatusBadge

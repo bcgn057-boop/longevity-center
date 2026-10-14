@@ -105,6 +105,7 @@ function patientPayload(array $overrides = []): array
 function appointmentPayload(array $overrides = []): array
 {
     return [
+        'type' => 'general_visit',
         'date' => '2026-11-02',
         'start_time' => '10:00',
         'end_time' => '10:30',

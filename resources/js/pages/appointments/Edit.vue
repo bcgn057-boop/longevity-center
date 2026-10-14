@@ -2,11 +2,12 @@
 import { Head } from '@inertiajs/vue3';
 import AppointmentForm from '@/components/appointments/AppointmentForm.vue';
 import { index, update } from '@/routes/appointments';
-import type { Appointment, DoctorOption } from '@/types';
+import type { Appointment, AppointmentTypeOption, DoctorOption } from '@/types';
 
 const props = defineProps<{
     appointment: Appointment;
     doctors: DoctorOption[];
+    types: AppointmentTypeOption[];
     canEditReason: boolean;
     timezone: string;
     today: string;
@@ -29,6 +30,7 @@ defineOptions({
             :appointment="props.appointment"
             :patient="null"
             :doctors="doctors"
+            :types="types"
             :can-edit-reason="canEditReason"
             :timezone="timezone"
             :today="today"

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import { Download, FileText } from '@lucide/vue';
 import FlagBadge from '@/components/labs/FlagBadge.vue';
+import { Button } from '@/components/ui/button';
 import { index } from '@/routes/my-results';
 import type { PatientReport } from '@/types';
 
@@ -27,6 +29,24 @@ defineOptions({
                 <span v-if="report.lab_name">{{ report.lab_name }} · </span>
                 Reviewed and released {{ report.released }}
             </p>
+        </div>
+
+        <div
+            v-if="report.attachment_url"
+            class="flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 text-sm"
+        >
+            <FileText class="size-4 text-muted-foreground" aria-hidden="true" />
+            <span class="flex-1">
+                The lab's original report is available as a PDF. If a result was
+                corrected after release, the corrected value below is the one
+                that counts.
+            </span>
+            <Button variant="outline" size="sm" as-child>
+                <a :href="report.attachment_url" download>
+                    <Download class="size-4" aria-hidden="true" />
+                    Download PDF
+                </a>
+            </Button>
         </div>
 
         <section

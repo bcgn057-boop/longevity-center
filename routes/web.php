@@ -150,6 +150,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('labs/{labReport}', [LabReportController::class, 'show'])
             ->can('viewLabReport', 'labReport')
             ->name('labs.show');
+        Route::get('labs/{labReport}/attachment', [LabReportController::class, 'attachment'])
+            ->can('viewLabReport', 'labReport')
+            ->name('labs.attachment');
         Route::post('labs/{labReport}/results', [LabReportController::class, 'addResults'])
             ->can('enterLabResults', 'labReport')
             ->name('labs.results.store');
@@ -206,6 +209,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('my-results/{report}', [MyLabResultsController::class, 'show'])
             ->whereNumber('report')
             ->name('my-results.show');
+        Route::get('my-results/{report}/attachment', [MyLabResultsController::class, 'attachment'])
+            ->whereNumber('report')
+            ->name('my-results.attachment');
 
         Route::get('my-protocols', [AdherenceController::class, 'index'])->name('my-protocols.index');
         Route::put('my-protocols/items/{item}/adherence', [AdherenceController::class, 'update'])

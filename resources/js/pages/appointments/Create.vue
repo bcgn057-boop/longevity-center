@@ -6,12 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { index, store } from '@/routes/appointments';
-import type { DoctorOption, PatientOption } from '@/types';
+import type {
+    AppointmentTypeOption,
+    DoctorOption,
+    PatientOption,
+} from '@/types';
 
 const props = defineProps<{
     patient: PatientOption | null;
     patientOptions: PatientOption[];
     doctors: DoctorOption[];
+    types: AppointmentTypeOption[];
     canEditReason: boolean;
     timezone: string;
     today: string;
@@ -111,6 +116,7 @@ function choose(patient: PatientOption): void {
         <AppointmentForm
             :patient="selected"
             :doctors="doctors"
+            :types="types"
             :can-edit-reason="canEditReason"
             :timezone="timezone"
             :today="today"

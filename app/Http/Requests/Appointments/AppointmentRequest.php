@@ -2,12 +2,14 @@
 
 namespace App\Http\Requests\Appointments;
 
+use App\Enums\AppointmentType;
 use App\Models\Appointment;
 use App\Models\User;
 use App\Services\AppointmentScheduler;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
@@ -47,6 +49,7 @@ abstract class AppointmentRequest extends FormRequest
     {
         return [
             'doctor_id' => ['required', 'integer'],
+            'type' => ['required', Rule::enum(AppointmentType::class)],
             'date' => ['required', 'date_format:Y-m-d'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
@@ -65,6 +68,8 @@ abstract class AppointmentRequest extends FormRequest
     {
         return [
             'reason.prohibited' => 'You are not allowed to record the reason for a visit.',
+            'type.required' => 'Choose the type of appointment.',
+            'type.enum' => 'Choose the type of appointment.',
             'start_time.date_format' => 'Enter the start time as HH:MM.',
             'end_time.date_format' => 'Enter the end time as HH:MM.',
         ];
@@ -130,12 +135,13 @@ abstract class AppointmentRequest extends FormRequest
     /**
      * Get the attributes to save, with times converted from the clinic's timezone.
      *
-     * @return array{doctor_id: int, start_time: Carbon, end_time: Carbon, reason?: string|null}
+     * @return array{doctor_id: int, type: AppointmentType, start_time: Carbon, end_time: Carbon, reason?: string|null}
      */
     public function appointmentAttributes(): array
     {
         $attributes = [
             'doctor_id' => $this->integer('doctor_id'),
+            'type' => AppointmentType::from((string) $this->input('type')),
             'start_time' => $this->startsAt(),
             'end_time' => $this->endsAt(),
         ];
