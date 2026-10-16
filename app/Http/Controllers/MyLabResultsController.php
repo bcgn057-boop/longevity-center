@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\AuditEvent;
 use App\Enums\LabReportStatus;
 use App\Labs\LabAttachmentStore;
+use App\Labs\LabComparison;
 use App\Labs\PatientResultsPresenter;
 use App\Models\LabReport;
 use App\Models\Patient;
@@ -30,12 +31,12 @@ class MyLabResultsController extends Controller
         $patient = $request->user()?->patient;
 
         if (! $patient instanceof Patient) {
-            return Inertia::render('labs/MyResults', ['linked' => false, 'groups' => [], 'reports' => []]);
+            return Inertia::render('labs/MyResults', ['linked' => false, 'groups' => [], 'reports' => [], 'history' => null]);
         }
 
         $reports = $patient->labReports()
             ->where('status', LabReportStatus::Released)
-            ->with('results.biomarker')
+            ->with(['results.biomarker', 'labPartner', 'requisition.labPartner'])
             ->orderBy('collected_at')
             ->get();
 
@@ -47,6 +48,7 @@ class MyLabResultsController extends Controller
         return Inertia::render('labs/MyResults', [
             'linked' => true,
             'groups' => PatientResultsPresenter::trends($reports),
+            'history' => LabComparison::build($reports),
             'reports' => $reports->sortByDesc('collected_at')
                 ->map(fn (LabReport $report) => PatientResultsPresenter::summary($report))
                 ->values()

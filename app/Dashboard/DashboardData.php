@@ -7,9 +7,11 @@ use App\Enums\AppointmentStatus;
 use App\Enums\AuditCategory;
 use App\Enums\AuditEvent;
 use App\Enums\LabReportStatus;
+use App\Enums\LabRequisitionStatus;
 use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\LabReport;
+use App\Models\LabRequisition;
 use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\ProtocolItem;
@@ -115,6 +117,7 @@ final class DashboardData
 
         $released = $patient->labReports()->where('status', LabReportStatus::Released);
         $latest = (clone $released)->max('reviewed_at');
+        $labs = (clone $released)->get(['lab_partner_id', 'lab_name'])->map(fn (LabReport $report) => $report->lab_partner_id ?? 'clinic:'.$report->lab_name)->unique()->count();
 
         return [
             'title' => 'Your care',
@@ -132,7 +135,9 @@ final class DashboardData
                 ),
                 $this->card(
                     'results', 'Lab reports', (clone $released)->count(),
-                    $latest ? 'Latest released '.Carbon::parse($latest, 'UTC')->setTimezone($this->timezone)->format('j M Y') : 'None released yet',
+                    $latest
+                        ? 'From '.$labs.' '.($labs === 1 ? 'lab' : 'labs').' · latest '.Carbon::parse($latest, 'UTC')->setTimezone($this->timezone)->format('j M Y')
+                        : 'None released yet',
                     route('my-results.index'),
                 ),
             ],
@@ -165,6 +170,11 @@ final class DashboardData
                     'Waiting for a doctor or practitioner',
                     route('labs.index'),
                 ),
+                $this->card(
+                    'requisitions', 'Tests awaiting results', LabRequisition::query()->where('status', LabRequisitionStatus::Ordered)->count(),
+                    'Ordered from partner labs',
+                    route('lab-requisitions.index'),
+                ),
             ],
         ];
     }
@@ -182,9 +192,16 @@ final class DashboardData
 
         [$start, $end] = $this->todayBounds();
 
+        // Only this lab's own work: other partners' volumes stay private.
         return [
             'title' => 'Lab work',
             'cards' => [
+                $this->card(
+                    'requisitions', 'Open requisitions',
+                    LabRequisition::query()->visibleTo($this->user)->where('status', LabRequisitionStatus::Ordered)->count(),
+                    'Sent to '.($this->user->labPartner->name ?? 'your lab'),
+                    route('lab-requisitions.index'),
+                ),
                 $this->card(
                     'labs', 'Entered by you today',
                     LabReport::query()->where('entered_by', $this->user->id)->where('created_at', '>=', $start)->where('created_at', '<', $end)->count(),
@@ -192,8 +209,8 @@ final class DashboardData
                     route('labs.index'),
                 ),
                 $this->card(
-                    'review', 'Waiting for review', LabReport::query()->where('status', LabReportStatus::PendingReview)->count(),
-                    'Across the clinic',
+                    'review', 'Waiting for review', LabReport::query()->visibleTo($this->user)->where('status', LabReportStatus::PendingReview)->count(),
+                    'Your lab\'s reports',
                     route('labs.index', ['status' => LabReportStatus::PendingReview->value]),
                 ),
             ],

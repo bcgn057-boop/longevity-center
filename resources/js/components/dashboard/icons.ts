@@ -27,6 +27,7 @@ export const dashboardIcons: Record<string, Component> = {
     results: FlaskConical,
     protocol: ListChecks,
     protocols: ClipboardList,
+    requisitions: ClipboardList,
     analytics: ChartColumn,
     staff: UserCog,
     audit: ScrollText,

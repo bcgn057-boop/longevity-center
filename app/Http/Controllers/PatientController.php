@@ -8,10 +8,14 @@ use App\Http\Requests\Patients\StorePatientRequest;
 use App\Http\Requests\Patients\UpdatePatientRequest;
 use App\Http\Resources\PatientResource;
 use App\Labs\LabPresenter;
+use App\Labs\LabRequisitionPresenter;
 use App\Models\Appointment;
 use App\Models\CareReminder;
 use App\Models\EmergencyContact;
+use App\Models\FunctionalAssessment;
+use App\Models\LabPartner;
 use App\Models\LabReport;
+use App\Models\LabRequisition;
 use App\Models\Patient;
 use App\Models\Prescription;
 use App\Reminders\NotificationConsent;
@@ -104,6 +108,10 @@ class PatientController extends Controller
             'consent' => $canManageConsent ? $consent->summary($patient) : null,
             'careReminders' => $canManageCareReminders ? $this->careReminders($patient) : null,
             'labReports' => $user?->can('viewLabReports', LabReport::class) ? $this->labReports($patient) : null,
+            'labRequisitions' => $user?->can('orderLabTests', LabRequisition::class) ? $this->labRequisitions($patient) : null,
+            'labPartners' => $user?->can('orderLabTests', LabRequisition::class)
+                ? LabPartner::query()->active()->orderBy('name')->get()->map->toOption()->all()
+                : [],
             'can' => [
                 'update' => $request->user()?->can('update', $patient),
                 'archive' => $request->user()?->can('archive', $patient),
@@ -113,6 +121,8 @@ class PatientController extends Controller
                 'manageConsent' => $canManageConsent,
                 'manageCareReminders' => $canManageCareReminders,
                 'addLabReport' => ! $patient->trashed() && (bool) $user?->can('enterLabResults', LabReport::class),
+                'viewAssessments' => (bool) $user?->can('viewAssessments', FunctionalAssessment::class),
+                'orderLabTests' => ! $patient->trashed() && (bool) $user?->can('orderLabTests', LabRequisition::class),
                 'viewPrescriptions' => ! $patient->trashed() && (bool) $user?->can('viewPrescriptions', Prescription::class),
             ],
         ]);
@@ -202,6 +212,23 @@ class PatientController extends Controller
             ->limit(50)
             ->get()
             ->map(fn (LabReport $report) => LabPresenter::summary($report))
+            ->all();
+    }
+
+    /**
+     * The patient's lab requisitions, newest first.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function labRequisitions(Patient $patient): array
+    {
+        return LabRequisition::query()
+            ->where('patient_id', $patient->id)
+            ->with(['patient', 'labPartner', 'orderer:id,name'])
+            ->latest()
+            ->limit(50)
+            ->get()
+            ->map(fn (LabRequisition $requisition) => LabRequisitionPresenter::row($requisition))
             ->all();
     }
 

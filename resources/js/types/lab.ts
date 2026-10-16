@@ -21,6 +21,9 @@ export type LabReportSummary = {
     patient: PatientOption;
     collected: string;
     lab_name: string | null;
+    // The partner lab's name, or the clinic's own lab.
+    source: string;
+    lab_partner_id: number | null;
     status: LabReportStatus;
     status_label: string;
     entered_by: string | null;
@@ -104,6 +107,7 @@ export type PatientReportSummary = {
     collected: string;
     released: string | null;
     lab_name: string | null;
+    source: string;
 };
 
 export type PatientReport = PatientReportSummary & {
@@ -114,4 +118,62 @@ export type PatientReport = PatientReportSummary & {
         label: string;
         results: (TrendPoint & { biomarker: string })[];
     }[];
+};
+
+export type LabRequisitionRow = {
+    id: number;
+    patient: PatientOption;
+    lab_partner: { id: number; name: string };
+    tests: string[];
+    instructions: string | null;
+    status: 'ordered' | 'reported' | 'cancelled';
+    status_label: string;
+    ordered_by: string | null;
+    ordered_at: string | null;
+};
+
+export type LabHistory = {
+    sources: {
+        name: string;
+        partner: boolean;
+        reports: number;
+        latest: string | null;
+    }[];
+    // Newest first.
+    timeline: {
+        id: number;
+        date: string;
+        date_label: string;
+        source: string;
+        status: LabReportStatus;
+        status_label: string;
+        tests: string[];
+        results: number;
+        flagged: number;
+    }[];
+    comparison: {
+        // Oldest first: the most recent reports.
+        columns: {
+            id: number;
+            date_label: string;
+            source: string;
+            status: LabReportStatus;
+        }[];
+        groups: {
+            category: string;
+            label: string;
+            rows: {
+                biomarker: string;
+                // One per column; null where that report has no value.
+                cells: ({
+                    value: string;
+                    unit: string;
+                    flag: 'low' | 'normal' | 'high' | null;
+                    flag_label: string | null;
+                } | null)[];
+            }[];
+        }[];
+        // Older reports not shown as columns.
+        hidden: number;
+    };
 };

@@ -26,6 +26,11 @@ enum AuditEvent: string
     case PasswordChanged = 'user.password_changed';
     case EmailChanged = 'user.email_changed';
     case RoleChanged = 'user.role_changed';
+    case UserCreated = 'user.created';
+    case LabPartnerChanged = 'user.lab_partner_changed';
+    case UserDeactivated = 'user.deactivated';
+    case UserReactivated = 'user.reactivated';
+    case InvitationSent = 'user.invitation_sent';
     case UserDeleted = 'user.deleted';
 
     // Authorization
@@ -59,6 +64,9 @@ enum AuditEvent: string
     case LabReportAttachmentDownloaded = 'lab_report.attachment_downloaded';
     case LabResultRecorded = 'lab_result.recorded';
     case LabResultCorrected = 'lab_result.corrected';
+    case LabRequisitionOrdered = 'lab_requisition.ordered';
+    case LabRequisitionCancelled = 'lab_requisition.cancelled';
+    case LabRequisitionListed = 'lab_requisition.listed';
 
     // Prescriptions and protocols
     case PrescriptionIssued = 'prescription.issued';
@@ -69,6 +77,10 @@ enum AuditEvent: string
     case ProtocolItemAdjusted = 'protocol_item.adjusted';
     case ProtocolItemDiscontinued = 'protocol_item.discontinued';
     case AdherenceRecorded = 'protocol_adherence.recorded';
+
+    // Functional assessments
+    case AssessmentRecorded = 'assessment.recorded';
+    case AssessmentsViewed = 'assessment.viewed';
 
     // Care reminders
     case CareReminderCreated = 'care_reminder.created';
@@ -92,6 +104,7 @@ enum AuditEvent: string
         if (in_array($this, [
             self::PatientViewed, self::PatientSearched, self::AppointmentViewed, self::AppointmentListed,
             self::LabReportListed, self::LabReportViewed, self::LabReportAttachmentDownloaded, self::PrescriptionListed,
+            self::LabRequisitionListed, self::AssessmentsViewed,
         ], true)) {
             return AuditCategory::PhiAccess;
         }
@@ -100,7 +113,8 @@ enum AuditEvent: string
             $this === self::AccessDenied => AuditCategory::Security,
             str_starts_with($this->value, 'auth.') => AuditCategory::Authentication,
             str_starts_with($this->value, 'user.') => AuditCategory::Account,
-            str_starts_with($this->value, 'patient.') => AuditCategory::PatientRecords,
+            str_starts_with($this->value, 'patient.'),
+            str_starts_with($this->value, 'assessment.') => AuditCategory::PatientRecords,
             str_starts_with($this->value, 'appointment.') => AuditCategory::Appointments,
             str_starts_with($this->value, 'lab_') => AuditCategory::Labs,
             str_starts_with($this->value, 'prescription.'),

@@ -8,6 +8,7 @@ use App\Exceptions\MedicalRecordRetentionException;
 use App\Labs\LabValue;
 use App\Models\AuditLog;
 use App\Models\Biomarker;
+use App\Models\LabPartner;
 use App\Models\LabReport;
 use App\Models\LabResult;
 use App\Models\Patient;
@@ -18,7 +19,8 @@ use Illuminate\Support\Facades\DB;
 beforeEach(function () {
     $this->seed(BiomarkerSeeder::class);
     $this->apob = Biomarker::where('code', 'apob')->sole();
-    $this->report = LabReport::factory()->create();
+    $this->partner = LabPartner::factory()->create();
+    $this->report = LabReport::factory()->create(['lab_partner_id' => $this->partner->id]);
 });
 
 function result(array $attributes = []): LabResult
@@ -215,7 +217,7 @@ describe('auditing', function () {
 
 describe('access', function () {
     test('who may see and enter results', function (UserRole $role, bool $list, bool $enter, bool $release) {
-        $user = userWithRole($role);
+        $user = userWithRole($role, $this->partner);
 
         expect($user->can('viewLabReports', LabReport::class))->toBe($list)
             ->and($user->can('viewLabReport', $this->report))->toBe($list)
@@ -234,14 +236,14 @@ describe('access', function () {
     test('after release only clinicians may correct, and nobody may add results', function () {
         $this->report->release(userWithRole(UserRole::Doctor));
 
-        expect(userWithRole(UserRole::LabStaff)->can('correctLabResults', $this->report))->toBeFalse()
+        expect(userWithRole(UserRole::LabStaff, $this->partner)->can('correctLabResults', $this->report))->toBeFalse()
             ->and(userWithRole(UserRole::Doctor)->can('correctLabResults', $this->report))->toBeTrue()
             ->and(userWithRole(UserRole::Doctor)->can('enterLabResults', $this->report))->toBeFalse()
             ->and(userWithRole(UserRole::Doctor)->can('releaseLabReport', $this->report))->toBeFalse();
     });
 
     test('before release lab staff may correct their entries', function () {
-        expect(userWithRole(UserRole::LabStaff)->can('correctLabResults', $this->report))->toBeTrue();
+        expect(userWithRole(UserRole::LabStaff, $this->partner)->can('correctLabResults', $this->report))->toBeTrue();
     });
 
     test('a patient sees their own reports only once released', function () {

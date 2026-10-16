@@ -16,6 +16,8 @@ enum BiomarkerCategory: string
     case Kidney = 'kidney';
     case Liver = 'liver';
     case Blood = 'blood';
+    case Cellular = 'cellular';
+    case Oncology = 'oncology';
 
     public function label(): string
     {
@@ -29,6 +31,8 @@ enum BiomarkerCategory: string
             self::Kidney => 'Kidney',
             self::Liver => 'Liver',
             self::Blood => 'Blood count',
+            self::Cellular => 'Cellular & mitochondrial',
+            self::Oncology => 'Cancer screening',
         };
     }
 }

@@ -12,6 +12,21 @@ class UserObserver
     public function __construct(private readonly AuditLogger $audit) {}
 
     /**
+     * Audit accounts made by an administrator. (Self-registration is
+     * audited as auth.registered.)
+     */
+    public function created(User $user): void
+    {
+        if (auth()->check()) {
+            $this->audit->record(AuditEvent::UserCreated, auditable: $user, newValues: [
+                'email' => $user->email,
+                'role' => $this->roleSlug($user->role_id),
+                'lab_partner_id' => $user->lab_partner_id,
+            ]);
+        }
+    }
+
+    /**
      * Audit security-relevant changes to a user account.
      */
     public function updated(User $user): void
@@ -27,6 +42,19 @@ class UserObserver
                 oldValues: ['email' => $user->getOriginal('email')],
                 newValues: ['email' => $user->email],
             );
+        }
+
+        if ($user->wasChanged('lab_partner_id')) {
+            $this->audit->record(
+                AuditEvent::LabPartnerChanged,
+                auditable: $user,
+                oldValues: ['lab_partner_id' => $user->getOriginal('lab_partner_id')],
+                newValues: ['lab_partner_id' => $user->lab_partner_id],
+            );
+        }
+
+        if ($user->wasChanged('deactivated_at')) {
+            $this->audit->record($user->isDeactivated() ? AuditEvent::UserDeactivated : AuditEvent::UserReactivated, auditable: $user);
         }
 
         if ($user->wasChanged('role_id')) {

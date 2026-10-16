@@ -34,7 +34,10 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property int|null $role_id
+ * @property int|null $lab_partner_id
+ * @property Carbon|null $deactivated_at
  * @property-read Role|null $role
+ * @property-read LabPartner|null $labPartner
  */
 #[ObservedBy(UserObserver::class)]
 #[Fillable(['name', 'email', 'password'])]
@@ -52,6 +55,22 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
+    }
+
+    /**
+     * The external lab a lab user works for. Lab users only see that
+     * partner's requisitions and reports.
+     *
+     * @return BelongsTo<LabPartner, $this>
+     */
+    public function labPartner(): BelongsTo
+    {
+        return $this->belongsTo(LabPartner::class);
+    }
+
+    public function isDeactivated(): bool
+    {
+        return $this->deactivated_at !== null;
     }
 
     /**
@@ -122,6 +141,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     protected function casts(): array
     {
         return [
+            'deactivated_at' => 'datetime',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',

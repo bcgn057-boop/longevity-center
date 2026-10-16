@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
 import ResultRowsEditor from '@/components/labs/ResultRowsEditor.vue';
@@ -7,12 +7,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { emptyResultRow } from '@/lib/labs';
-import { index, store } from '@/routes/labs';
-import type { BiomarkerGroup, PatientOption, ResultRow } from '@/types';
+import { create, index, store } from '@/routes/labs';
+import { index as requisitionsIndex } from '@/routes/lab-requisitions';
+import type {
+    BiomarkerGroup,
+    LabRequisitionRow,
+    PatientOption,
+    ResultRow,
+} from '@/types';
 
 const props = defineProps<{
     patient: PatientOption | null;
     patientOptions: PatientOption[];
+    // The requisition the report answers, when entering against one.
+    requisition: LabRequisitionRow | null;
+    // A partner lab's open requisitions, to choose from.
+    requisitions: LabRequisitionRow[];
+    // Partner labs can only report against their own requisitions.
+    requiresRequisition: boolean;
     catalog: BiomarkerGroup[];
     timezone: string;
     now: { date: string; time: string };
@@ -31,6 +43,7 @@ const search = ref('');
 
 const form = useForm<{
     patient_id: number | null;
+    lab_requisition_id: number | null;
     collected_date: string;
     collected_time: string;
     lab_name: string;
@@ -40,6 +53,7 @@ const form = useForm<{
     results: ResultRow[];
 }>({
     patient_id: props.patient?.id ?? null,
+    lab_requisition_id: props.requisition?.id ?? null,
     collected_date: props.now.date,
     collected_time: '08:00',
     lab_name: '',
@@ -104,7 +118,69 @@ const errors = (): Record<string, string | undefined> =>
     >
         <h1 class="text-xl font-semibold">Enter lab report</h1>
 
-        <section class="space-y-2">
+        <section
+            v-if="requisition"
+            class="space-y-1 rounded-lg border p-4 text-sm"
+        >
+            <div class="font-medium">
+                Requisition #{{ requisition.id }} ·
+                {{ requisition.lab_partner.name }}
+            </div>
+            <div>
+                {{ requisition.patient.full_name }}
+                <span class="ml-1 font-mono text-xs text-muted-foreground">
+                    {{ requisition.patient.medical_record_number }}
+                </span>
+            </div>
+            <div class="text-muted-foreground">
+                {{ requisition.tests.join(', ') }}
+            </div>
+            <div v-if="requisition.instructions" class="text-muted-foreground">
+                {{ requisition.instructions }}
+            </div>
+            <InputError
+                :message="
+                    form.errors.lab_requisition_id ?? form.errors.patient_id
+                "
+            />
+        </section>
+
+        <section v-else-if="requiresRequisition" class="space-y-2">
+            <h2 class="text-sm font-medium">Choose a requisition</h2>
+            <p
+                v-if="requisitions.length === 0"
+                class="text-sm text-muted-foreground"
+            >
+                Your lab has no open requisitions.
+            </p>
+            <ul v-else class="divide-y rounded-lg border text-sm">
+                <li v-for="option in requisitions" :key="option.id">
+                    <Link
+                        :href="create({ query: { requisition: option.id } })"
+                        class="flex flex-wrap justify-between gap-2 px-4 py-2 hover:bg-muted/50"
+                    >
+                        <span>
+                            <span class="font-medium">{{
+                                option.patient.full_name
+                            }}</span>
+                            · {{ option.tests.join(', ') }}
+                        </span>
+                        <span class="text-muted-foreground">
+                            Ordered {{ option.ordered_at }}
+                        </span>
+                    </Link>
+                </li>
+            </ul>
+            <InputError :message="form.errors.lab_requisition_id" />
+            <Link
+                :href="requisitionsIndex()"
+                class="text-sm underline underline-offset-4"
+            >
+                All requisitions
+            </Link>
+        </section>
+
+        <section v-else class="space-y-2">
             <Label for="patient-search">Patient</Label>
             <div v-if="selected" class="flex items-center gap-3 text-sm">
                 <span class="font-medium">{{ selected.full_name }}</span>
@@ -225,7 +301,12 @@ const errors = (): Record<string, string | undefined> =>
         </section>
 
         <div class="flex items-center gap-3">
-            <Button type="submit" :disabled="form.processing">
+            <Button
+                type="submit"
+                :disabled="
+                    form.processing || (requiresRequisition && !requisition)
+                "
+            >
                 Save and send for review
             </Button>
             <span class="text-xs text-muted-foreground">

@@ -112,6 +112,16 @@ class Patient extends Model implements ReceivesReminders
     }
 
     /**
+     * Get the patient's measurements and functional tests, newest first.
+     *
+     * @return HasMany<FunctionalAssessment, $this>
+     */
+    public function assessments(): HasMany
+    {
+        return $this->hasMany(FunctionalAssessment::class)->orderByDesc('measured_on')->orderByDesc('id');
+    }
+
+    /**
      * Get the prescriptions issued to the patient.
      *
      * @return HasMany<Prescription, $this>

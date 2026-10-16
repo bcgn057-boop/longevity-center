@@ -32,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
         'access-clinical', 'viewMedical', 'updateMedical', 'viewReason', 'manageCareReminders',
         'viewLabReports', 'viewLabReport', 'enterLabResults', 'correctLabResults', 'releaseLabReport',
         'viewPrescriptions', 'managePrescriptions',
+        'viewLabRequisitions', 'viewLabRequisition', 'orderLabTests', 'cancelLabRequisition',
+        'viewAssessments', 'recordAssessment',
     ];
 
     /**

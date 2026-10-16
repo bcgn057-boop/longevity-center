@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\AuditEvent;
 use App\Enums\LabReportStatus;
+use App\Enums\LabRequisitionStatus;
 use App\Enums\UserRole;
 use App\Http\Requests\Labs\AddLabResultsRequest;
 use App\Http\Requests\Labs\CorrectLabResultRequest;
@@ -11,7 +12,9 @@ use App\Http\Requests\Labs\StoreLabReportRequest;
 use App\Labs\LabAttachmentStore;
 use App\Labs\LabPresenter;
 use App\Labs\LabReportService;
+use App\Labs\LabRequisitionPresenter;
 use App\Models\LabReport;
+use App\Models\LabRequisition;
 use App\Models\LabResult;
 use App\Models\Patient;
 use App\Models\User;
@@ -49,7 +52,8 @@ class LabReportController extends Controller
         $status = $filters['status'] ?? ($this->isClinician($request->user()) ? LabReportStatus::PendingReview->value : 'all');
 
         $reports = LabReport::query()
-            ->with(['patient:id,first_name,last_name,medical_record_number,deleted_at', 'enteredBy:id,name'])
+            ->visibleTo($this->user($request))
+            ->with(['patient:id,first_name,last_name,medical_record_number,deleted_at', 'enteredBy:id,name', 'labPartner:id,name'])
             ->withCount(['results' => fn (Builder $query) => $query->whereDoesntHave('successor')])
             ->when($status !== 'all', fn (Builder $query) => $query->where('status', $status))
             ->when(
@@ -81,14 +85,29 @@ class LabReportController extends Controller
         $validated = $request->validate([
             'patient_id' => ['nullable', 'integer'],
             'patient_search' => ['nullable', 'string', 'max:100'],
+            'requisition' => ['nullable', 'integer'],
         ]);
 
-        $patient = isset($validated['patient_id']) ? Patient::query()->whereKey((int) $validated['patient_id'])->first() : null;
+        $user = $this->user($request);
+        $isPartnerLab = $user->hasRole(UserRole::LabStaff);
+        $requisition = isset($validated['requisition'])
+            ? LabRequisition::query()->visibleTo($user)->open()->with(['patient', 'labPartner'])->find((int) $validated['requisition'])
+            : null;
+
+        // Partner labs never search the patient list: they only see the
+        // patients on requisitions sent to them.
+        $patient = $requisition->patient
+            ?? (! $isPartnerLab && isset($validated['patient_id']) ? Patient::query()->whereKey((int) $validated['patient_id'])->first() : null);
         $timezone = (string) config('clinic.timezone');
 
         return Inertia::render('labs/Create', [
             'patient' => $patient ? $this->patientOption($patient) : null,
-            'patientOptions' => fn () => $this->searchPatients($validated['patient_search'] ?? null),
+            'patientOptions' => fn () => $isPartnerLab ? [] : $this->searchPatients($validated['patient_search'] ?? null),
+            'requisition' => $requisition ? LabRequisitionPresenter::row($requisition) : null,
+            'requisitions' => $isPartnerLab
+                ? LabRequisition::query()->visibleTo($user)->where('status', LabRequisitionStatus::Ordered)->with(['patient', 'labPartner'])->oldest()->limit(100)->get()->map(fn (LabRequisition $r) => LabRequisitionPresenter::row($r))->all()
+                : [],
+            'requiresRequisition' => $isPartnerLab,
             'catalog' => LabPresenter::catalog(),
             'timezone' => $timezone,
             'now' => ['date' => Carbon::now($timezone)->format('Y-m-d'), 'time' => Carbon::now($timezone)->format('H:i')],
@@ -105,6 +124,7 @@ class LabReportController extends Controller
             $request->results(),
             $this->user($request),
             $request->file('attachment'),
+            $request->requisition(),
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Lab report saved and sent for review.')]);

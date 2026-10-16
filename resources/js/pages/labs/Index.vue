@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Paperclip } from '@lucide/vue';
+import { index as requisitionsIndex } from '@/routes/lab-requisitions';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
@@ -43,9 +44,14 @@ function apply(): void {
                     a doctor or practitioner releases it.
                 </p>
             </div>
-            <Button as-child>
-                <Link :href="create()">Enter lab report</Link>
-            </Button>
+            <div class="flex gap-2">
+                <Button variant="outline" as-child>
+                    <Link :href="requisitionsIndex()">Requisitions</Link>
+                </Button>
+                <Button as-child>
+                    <Link :href="create()">Enter lab report</Link>
+                </Button>
+            </div>
         </div>
 
         <form
@@ -118,7 +124,7 @@ function apply(): void {
                             </span>
                         </td>
                         <td class="px-3 py-2">
-                            {{ report.lab_name ?? '—' }}
+                            {{ report.source }}
                             <Paperclip
                                 v-if="report.has_attachment"
                                 class="ml-1 inline size-3.5 text-muted-foreground"

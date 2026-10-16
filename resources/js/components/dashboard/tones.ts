@@ -74,6 +74,7 @@ const toneByKey: Record<string, Tone> = {
     appointments: 'indigo',
     book: 'indigo',
     labs: 'amber',
+    requisitions: 'indigo',
     review: 'amber',
     lab_entry: 'sky',
     results: 'sky',

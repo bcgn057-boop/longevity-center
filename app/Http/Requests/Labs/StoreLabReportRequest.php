@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests\Labs;
 
+use App\Enums\UserRole;
 use App\Labs\LabResultRules;
+use App\Models\LabRequisition;
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
@@ -25,6 +28,8 @@ class StoreLabReportRequest extends FormRequest
     {
         $rules = [
             'patient_id' => ['required', 'integer', Rule::exists('patients', 'id')->whereNull('deleted_at')],
+            // Partner labs only report against requisitions sent to them.
+            'lab_requisition_id' => [$this->user()?->hasRole(UserRole::LabStaff) ? 'required' : 'nullable', 'integer'],
             'collected_date' => ['required', 'date_format:Y-m-d', 'after:1900-01-01'],
             'collected_time' => ['required', 'date_format:H:i'],
             'lab_name' => ['nullable', 'string', 'max:120'],
@@ -50,6 +55,7 @@ class StoreLabReportRequest extends FormRequest
         return [
             'patient_id.required' => 'Choose a patient.',
             'patient_id.exists' => 'Choose an active patient.',
+            'lab_requisition_id.required' => 'Choose the requisition this report is for.',
             'attachment.mimes' => 'Attach the report as a PDF.',
             'attachment.max' => 'The PDF must be 10 MB or smaller.',
             'attachment.uploaded' => 'The PDF could not be uploaded. It may be larger than the server accepts.',
@@ -68,6 +74,16 @@ class StoreLabReportRequest extends FormRequest
         return [function (Validator $validator) {
             if ($validator->errors()->isNotEmpty()) {
                 return;
+            }
+
+            if ($this->filled('lab_requisition_id')) {
+                $requisition = $this->requisition();
+
+                if ($requisition === null) {
+                    $validator->errors()->add('lab_requisition_id', 'Choose one of your lab\'s open requisitions.');
+                } elseif ($requisition->patient_id !== $this->integer('patient_id')) {
+                    $validator->errors()->add('patient_id', 'The report must be for the patient on the requisition.');
+                }
             }
 
             // The type check trusts what PHP detects; also insist the file
@@ -90,6 +106,24 @@ class StoreLabReportRequest extends FormRequest
 
             LabResultRules::checkRows($validator, $rows);
         }];
+    }
+
+    /**
+     * The requisition the report answers, if the user may report against it.
+     */
+    public function requisition(): ?LabRequisition
+    {
+        $user = $this->user();
+
+        if (! $user instanceof User || ! $this->filled('lab_requisition_id')) {
+            return null;
+        }
+
+        return LabRequisition::query()
+            ->visibleTo($user)
+            ->open()
+            ->with('labPartner')
+            ->find($this->integer('lab_requisition_id'));
     }
 
     public function collectedAt(): Carbon

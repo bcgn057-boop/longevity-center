@@ -37,6 +37,8 @@ class BiomarkerSeeder extends Seeder
         'inflammation' => [
             ['hs_crp', 'High-sensitivity CRP (hs-CRP)', ['mg/L']],
             ['homocysteine', 'Homocysteine', ['µmol/L']],
+            ['il_6', 'Interleukin-6 (IL-6)', ['pg/mL']],
+            ['tnf_alpha', 'Tumour necrosis factor alpha (TNF-α)', ['pg/mL']],
         ],
         'hormones' => [
             ['testosterone_total', 'Total testosterone', ['ng/dL', 'nmol/L']],
@@ -71,6 +73,12 @@ class BiomarkerSeeder extends Seeder
         ],
         'blood' => [
             ['hemoglobin', 'Hemoglobin', ['g/dL', 'g/L']],
+        ],
+        'cellular' => [
+            ['mtdna_copy_number', 'Mitochondrial DNA copy number', ['copies/cell']],
+        ],
+        'oncology' => [
+            ['ctc_count', 'Circulating tumour cells (CTC)', ['cells/7.5 mL']],
         ],
     ];
 

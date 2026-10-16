@@ -1,13 +1,18 @@
 <?php
 
 use App\Http\Controllers\AdherenceController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\CareReminderController;
 use App\Http\Controllers\Compliance\AnalyticsController;
 use App\Http\Controllers\Compliance\AuditLogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LabHistoryController;
 use App\Http\Controllers\LabReportController;
+use App\Http\Controllers\LabRequisitionController;
 use App\Http\Controllers\MyAppointmentController;
+use App\Http\Controllers\MyAssessmentController;
 use App\Http\Controllers\MyLabResultsController;
 use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\NotificationController;
@@ -17,9 +22,12 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\Settings\NotificationSettingsController;
 use App\Models\Appointment;
+use App\Models\FunctionalAssessment;
 use App\Models\LabReport;
+use App\Models\LabRequisition;
 use App\Models\Patient;
 use App\Models\Prescription;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
@@ -38,6 +46,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.')
         ->group(function () {
             Route::inertia('/', 'admin/Dashboard')->name('dashboard');
+
+            Route::get('users', [UserController::class, 'index'])->can('viewAny', User::class)->name('users.index');
+            Route::get('users/create', [UserController::class, 'create'])->can('create', User::class)->name('users.create');
+            Route::post('users', [UserController::class, 'store'])->can('create', User::class)->name('users.store');
+            Route::get('users/{user}/edit', [UserController::class, 'edit'])->can('update', 'user')->name('users.edit');
+            Route::put('users/{user}', [UserController::class, 'update'])->can('update', 'user')->name('users.update');
+            Route::post('users/{user}/deactivate', [UserController::class, 'deactivate'])->can('deactivate', 'user')->name('users.deactivate');
+            Route::post('users/{user}/reactivate', [UserController::class, 'reactivate'])->can('update', 'user')->name('users.reactivate');
+            Route::post('users/{user}/invite', [UserController::class, 'invite'])->can('update', 'user')->name('users.invite');
         });
 
     // Compliance reporting. The role check runs first and is audited; each
@@ -141,6 +158,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('labs', [LabReportController::class, 'index'])
             ->can('viewLabReports', LabReport::class)
             ->name('labs.index');
+        Route::get('lab-requisitions', [LabRequisitionController::class, 'index'])
+            ->can('viewLabRequisitions', LabRequisition::class)
+            ->name('lab-requisitions.index');
+        Route::post('patients/{patient}/lab-requisitions', [LabRequisitionController::class, 'store'])
+            ->can('orderLabTests', LabRequisition::class)
+            ->name('patients.lab-requisitions.store');
+        Route::post('lab-requisitions/{labRequisition}/cancel', [LabRequisitionController::class, 'cancel'])
+            ->can('cancelLabRequisition', 'labRequisition')
+            ->name('lab-requisitions.cancel');
         Route::get('labs/create', [LabReportController::class, 'create'])
             ->can('enterLabResults', LabReport::class)
             ->name('labs.create');
@@ -172,6 +198,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('patients/{patient}/prescriptions', [PrescriptionController::class, 'index'])
             ->can('viewPrescriptions', Prescription::class)
             ->name('patients.prescriptions.index');
+        Route::get('patients/{patient}/assessments', [AssessmentController::class, 'show'])
+            ->can('viewAssessments', FunctionalAssessment::class)
+            ->name('patients.assessments.show');
+        // Which kinds the user may record is checked in the controller.
+        Route::post('patients/{patient}/assessments', [AssessmentController::class, 'store'])
+            ->can('viewAssessments', FunctionalAssessment::class)
+            ->name('patients.assessments.store');
+        Route::get('patients/{patient}/lab-history', LabHistoryController::class)
+            ->can('viewLabReports', LabReport::class)
+            ->name('patients.lab-history');
         Route::get('patients/{patient}/protocols', [AdherenceController::class, 'show'])
             ->can('viewPrescriptions', Prescription::class)
             ->name('patients.protocols.show');
@@ -214,6 +250,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('my-results.attachment');
 
         Route::get('my-protocols', [AdherenceController::class, 'index'])->name('my-protocols.index');
+        Route::get('my-measurements', [MyAssessmentController::class, 'index'])->name('my-measurements.index');
+        Route::post('my-measurements', [MyAssessmentController::class, 'store'])->name('my-measurements.store');
         Route::put('my-protocols/items/{item}/adherence', [AdherenceController::class, 'update'])
             ->whereNumber('item')
             ->name('my-protocols.adherence.update');

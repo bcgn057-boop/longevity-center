@@ -3,6 +3,9 @@
 use App\Enums\AuditEvent;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
+use App\Models\LabPartner;
+use App\Models\LabRequisition;
+use App\Models\Patient;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -65,11 +68,22 @@ function auditEntries(AuditEvent $event)
 }
 
 /**
- * Create a verified user with the given role.
+ * Create a verified user with the given role. Lab users work for a lab
+ * partner (a new one unless given), as every real lab user must.
  */
-function userWithRole(UserRole $role): User
+function userWithRole(UserRole $role, ?LabPartner $partner = null): User
 {
-    return User::factory()->withRole($role)->create();
+    return User::factory()->withRole($role)->create(
+        $role === UserRole::LabStaff ? ['lab_partner_id' => ($partner ?? LabPartner::factory()->create())->id] : [],
+    );
+}
+
+/**
+ * An open requisition for the patient, sent to the partner.
+ */
+function requisitionFor(Patient $patient, LabPartner $partner): LabRequisition
+{
+    return LabRequisition::factory()->for($patient)->for($partner)->create();
 }
 
 /**

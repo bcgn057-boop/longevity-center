@@ -101,7 +101,7 @@ final class PatientResultsPresenter
     }
 
     /**
-     * @return array{id: int, collected: string, released: string|null, lab_name: string|null}
+     * @return array{id: int, collected: string, released: string|null, lab_name: string|null, source: string}
      */
     public static function summary(LabReport $report): array
     {
@@ -112,6 +112,7 @@ final class PatientResultsPresenter
             'collected' => $report->collected_at->copy()->setTimezone($timezone)->format('D j M Y'),
             'released' => $report->reviewed_at?->copy()->setTimezone($timezone)->format('D j M Y'),
             'lab_name' => $report->lab_name,
+            'source' => $report->sourceName(),
         ];
     }
 

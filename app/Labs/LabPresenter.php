@@ -70,6 +70,8 @@ final class LabPresenter
             ],
             'collected' => $report->collected_at->copy()->setTimezone(self::timezone())->format('D j M Y H:i'),
             'lab_name' => $report->lab_name,
+            'source' => $report->sourceName(),
+            'lab_partner_id' => $report->lab_partner_id,
             'status' => $report->status->value,
             'status_label' => $report->status->label(),
             'entered_by' => $report->enteredBy?->name,

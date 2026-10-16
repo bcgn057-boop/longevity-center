@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { dashboard } from '@/routes/admin';
+import { index as usersIndex } from '@/routes/admin/users';
 import { analytics } from '@/routes/compliance';
 import { index as auditLogs } from '@/routes/compliance/audit-logs';
 
@@ -26,6 +27,12 @@ defineOptions({
         <p class="text-sm text-muted-foreground">
             Only Super Admins and Clinic Admins can see this page.
         </p>
+        <Link
+            :href="usersIndex()"
+            class="text-sm font-medium underline underline-offset-4"
+        >
+            Manage user accounts
+        </Link>
         <Link
             :href="analytics()"
             class="text-sm font-medium underline underline-offset-4"

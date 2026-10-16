@@ -8,3 +8,5 @@ export * from './lab';
 export * from './prescription';
 export * from './compliance';
 export * from './dashboard';
+export * from './admin';
+export * from './assessment';

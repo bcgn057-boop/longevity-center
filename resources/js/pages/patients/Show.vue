@@ -2,6 +2,7 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import ConsentCard from '@/components/ConsentCard.vue';
+import LabRequisitions from '@/components/labs/LabRequisitions.vue';
 import CareReminders from '@/components/patients/CareReminders.vue';
 import PatientDetails from '@/components/patients/PatientDetails.vue';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,8 @@ import {
     show as showLabReport,
 } from '@/routes/labs';
 import { destroy, edit, index } from '@/routes/patients';
+import { labHistory } from '@/routes/patients';
+import { show as assessmentsShow } from '@/routes/patients/assessments';
 import { index as prescriptionsIndex } from '@/routes/patients/prescriptions';
 import {
     destroy as unlinkAccount,
@@ -35,7 +38,9 @@ import {
 import type {
     CareReminderItem,
     ConsentChannel,
+    LabPartnerOption,
     LabReportSummary,
+    LabRequisitionRow,
     Patient,
 } from '@/types';
 
@@ -44,6 +49,8 @@ const props = defineProps<{
     consent: ConsentChannel[] | null;
     careReminders: CareReminderItem[] | null;
     labReports: LabReportSummary[] | null;
+    labRequisitions: LabRequisitionRow[] | null;
+    labPartners: LabPartnerOption[];
     can: {
         update: boolean;
         archive: boolean;
@@ -54,6 +61,8 @@ const props = defineProps<{
         manageCareReminders: boolean;
         addLabReport: boolean;
         viewPrescriptions: boolean;
+        orderLabTests: boolean;
+        viewAssessments: boolean;
     };
 }>();
 
@@ -115,6 +124,11 @@ function submitArchive(): void {
                     >
                         Book appointment
                     </Link>
+                </Button>
+                <Button v-if="can.viewAssessments" variant="outline" as-child>
+                    <Link :href="assessmentsShow(patient.id)"
+                        >Measurements</Link
+                    >
                 </Button>
                 <Button v-if="can.viewPrescriptions" variant="outline" as-child>
                     <Link :href="prescriptionsIndex(patient.id)">
@@ -196,6 +210,16 @@ function submitArchive(): void {
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <h2 class="text-base font-medium">Lab reports</h2>
                 <Button
+                    v-if="can.orderLabTests && labReports.length"
+                    variant="outline"
+                    size="sm"
+                    as-child
+                >
+                    <Link :href="labHistory(patient.id)">
+                        All labs side by side
+                    </Link>
+                </Button>
+                <Button
                     v-if="can.addLabReport"
                     variant="outline"
                     size="sm"
@@ -231,13 +255,21 @@ function submitArchive(): void {
                         {{ report.collected }}
                     </Link>
                     <span class="text-muted-foreground">
-                        {{ report.lab_name ?? '—' }} ·
-                        {{ report.results_count }} results ·
+                        {{ report.source }} · {{ report.results_count }} results
+                        ·
                         {{ report.status_label }}
                     </span>
                 </li>
             </ul>
         </section>
+
+        <LabRequisitions
+            v-if="labRequisitions"
+            :patient-id="patient.id"
+            :requisitions="labRequisitions"
+            :lab-partners="labPartners"
+            :can-order="can.orderLabTests"
+        />
 
         <CareReminders
             v-if="can.manageCareReminders && careReminders"

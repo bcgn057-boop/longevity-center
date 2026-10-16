@@ -2,15 +2,22 @@
 import { Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import FlagBadge from '@/components/labs/FlagBadge.vue';
+import LabHistory from '@/components/labs/LabHistory.vue';
 import TrendChart from '@/components/labs/TrendChart.vue';
 import { Button } from '@/components/ui/button';
 import { index, show } from '@/routes/my-results';
-import type { PatientReportSummary, TrendGroup } from '@/types';
+import type {
+    LabHistory as LabHistoryData,
+    PatientReportSummary,
+    TrendGroup,
+} from '@/types';
 
 defineProps<{
     linked: boolean;
     groups: TrendGroup[];
     reports: PatientReportSummary[];
+    // Null when the account is not linked to a patient record.
+    history: LabHistoryData | null;
 }>();
 
 defineOptions({
@@ -183,6 +190,20 @@ const open = ref<number | null>(null);
             </div>
         </section>
 
+        <section
+            v-if="history && history.timeline.length"
+            class="space-y-4 border-t pt-6"
+        >
+            <div>
+                <h2 class="text-lg font-semibold">All your labs together</h2>
+                <p class="text-sm text-muted-foreground">
+                    Your released reports from every lab the clinic works with,
+                    in one place.
+                </p>
+            </div>
+            <LabHistory :history="history" :report-href="(id) => show(id)" />
+        </section>
+
         <section v-if="reports.length" class="space-y-3">
             <h2 class="text-base font-medium">Reports</h2>
             <ul class="divide-y rounded-lg border text-sm">
@@ -193,11 +214,8 @@ const open = ref<number | null>(null);
                 >
                     <span>
                         Collected {{ report.collected }}
-                        <span
-                            v-if="report.lab_name"
-                            class="text-muted-foreground"
-                        >
-                            · {{ report.lab_name }}
+                        <span class="text-muted-foreground">
+                            · {{ report.source }}
                         </span>
                     </span>
                     <Button variant="outline" size="sm" as-child>

@@ -5,6 +5,7 @@ use App\Enums\AuditEvent;
 use App\Enums\UserRole;
 use App\Models\Appointment;
 use App\Models\AuditLog;
+use App\Models\LabPartner;
 use App\Models\LabReport;
 use App\Models\Patient;
 use App\Models\Prescription;
@@ -101,15 +102,21 @@ describe('clinicians', function () {
     });
 });
 
-test('lab staff see the queue they feed', function () {
+test('lab staff see their own lab\'s queue, never other labs\'', function () {
     $lab = userWithRole(UserRole::LabStaff);
-    LabReport::factory()->create(['entered_by' => $lab->id]);
+    $otherLab = LabPartner::factory()->create();
+    LabReport::factory()->create(['entered_by' => $lab->id, 'lab_partner_id' => $lab->lab_partner_id]);
+    LabReport::factory()->create(['lab_partner_id' => $lab->lab_partner_id]);
+    LabReport::factory()->count(3)->create(['lab_partner_id' => $otherLab->id]);
     LabReport::factory()->create();
+    requisitionFor(Patient::factory()->create(), $lab->labPartner);
+    requisitionFor(Patient::factory()->create(), $otherLab);
 
     $dashboard = dashboardFor($lab);
 
     expect($dashboard['sections']['Lab work']['labs']['value'])->toBe(1)
         ->and($dashboard['sections']['Lab work']['review']['value'])->toBe(2)
+        ->and($dashboard['sections']['Lab work']['requisitions']['value'])->toBe(1)
         ->and($dashboard['sections'])->not->toHaveKey('Clinic today')
         ->and($dashboard['actions'])->toBe(['lab_entry', 'labs']);
 });

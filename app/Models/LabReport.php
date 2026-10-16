@@ -4,12 +4,14 @@ namespace App\Models;
 
 use App\Casts\UtcDateTime;
 use App\Enums\LabReportStatus;
+use App\Enums\UserRole;
 use App\Exceptions\MedicalRecordRetentionException;
 use App\Observers\LabReportObserver;
 use Database\Factories\LabReportFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +28,8 @@ use LogicException;
  *
  * @property int $id
  * @property int $patient_id
+ * @property int|null $lab_partner_id
+ * @property int|null $lab_requisition_id
  * @property Carbon $collected_at
  * @property string|null $lab_name
  * @property LabReportStatus $status
@@ -64,6 +68,45 @@ class LabReport extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class)->withTrashed();
+    }
+
+    /**
+     * The external lab that produced the report; null for the clinic's own.
+     *
+     * @return BelongsTo<LabPartner, $this>
+     */
+    public function labPartner(): BelongsTo
+    {
+        return $this->belongsTo(LabPartner::class);
+    }
+
+    /**
+     * @return BelongsTo<LabRequisition, $this>
+     */
+    public function requisition(): BelongsTo
+    {
+        return $this->belongsTo(LabRequisition::class, 'lab_requisition_id');
+    }
+
+    /**
+     * Reports the user may see: lab users only their own partner's, and
+     * none without a partner. Clinicians see all.
+     *
+     * @param  Builder<LabReport>  $query
+     */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        if ($user->hasRole(UserRole::LabStaff)) {
+            $query->where('lab_partner_id', $user->lab_partner_id ?? 0)->whereNotNull('lab_partner_id');
+        }
+    }
+
+    /**
+     * Where the report came from, for display.
+     */
+    public function sourceName(): string
+    {
+        return $this->labPartner->name ?? ($this->lab_name ?: 'Clinic lab');
     }
 
     /**

@@ -10,16 +10,13 @@ use App\Models\User;
  * Lab results are clinical data. Every ability here has a lab-specific name
  * and is listed in AppServiceProvider::CLINICAL_ABILITIES, so the Super Admin
  * bypass never grants it. The Clinic Admin has no access either.
+ *
+ * Lab users work for one external partner and only reach that partner's
+ * reports; a lab user without a partner reaches none. Doctors and
+ * practitioners see every report.
  */
 class LabReportPolicy
 {
-    /**
-     * Roles that may enter and read results.
-     *
-     * @var array<int, UserRole>
-     */
-    private const ENTRY = [UserRole::LabStaff, UserRole::Doctor, UserRole::Practitioner];
-
     /**
      * Roles that may review, release and correct released results.
      *
@@ -29,17 +26,21 @@ class LabReportPolicy
 
     public function viewLabReports(User $user): bool
     {
-        return $user->hasAnyRole(...self::ENTRY);
+        return $user->hasAnyRole(...self::CLINICIANS) || $this->isPartnerLabUser($user);
     }
 
     /**
-     * Staff who enter results see every report; a patient sees their own
-     * once it is released.
+     * Clinicians see every report and lab users their partner's; a patient
+     * sees their own once it is released.
      */
     public function viewLabReport(User $user, LabReport $report): bool
     {
-        if ($user->hasAnyRole(...self::ENTRY)) {
+        if ($user->hasAnyRole(...self::CLINICIANS)) {
             return true;
+        }
+
+        if ($user->hasRole(UserRole::LabStaff)) {
+            return $this->sameLab($user, $report);
         }
 
         return $user->hasRole(UserRole::Patient)
@@ -54,7 +55,15 @@ class LabReportPolicy
      */
     public function enterLabResults(User $user, ?LabReport $report = null): bool
     {
-        return $user->hasAnyRole(...self::ENTRY) && ! ($report?->isReleased() ?? false);
+        if ($report?->isReleased()) {
+            return false;
+        }
+
+        if ($user->hasAnyRole(...self::CLINICIANS)) {
+            return true;
+        }
+
+        return $report === null ? $this->isPartnerLabUser($user) : $this->sameLab($user, $report);
     }
 
     /**
@@ -63,11 +72,25 @@ class LabReportPolicy
      */
     public function correctLabResults(User $user, LabReport $report): bool
     {
-        return $user->hasAnyRole(...($report->isReleased() ? self::CLINICIANS : self::ENTRY));
+        if ($user->hasAnyRole(...self::CLINICIANS)) {
+            return true;
+        }
+
+        return ! $report->isReleased() && $this->sameLab($user, $report);
     }
 
     public function releaseLabReport(User $user, LabReport $report): bool
     {
         return $user->hasAnyRole(...self::CLINICIANS) && ! $report->isReleased();
+    }
+
+    private function isPartnerLabUser(User $user): bool
+    {
+        return $user->hasRole(UserRole::LabStaff) && $user->lab_partner_id !== null;
+    }
+
+    private function sameLab(User $user, LabReport $report): bool
+    {
+        return $this->isPartnerLabUser($user) && $report->lab_partner_id === $user->lab_partner_id;
     }
 }

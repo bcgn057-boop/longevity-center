@@ -3,6 +3,7 @@
 namespace App\Labs;
 
 use App\Models\LabReport;
+use App\Models\LabRequisition;
 use App\Models\LabResult;
 use App\Models\Patient;
 use App\Models\User;
@@ -27,25 +28,29 @@ class LabReportService
     /**
      * @param  array<int, array<string, mixed>>  $results
      * @param  UploadedFile|null  $attachment  the lab's original PDF, already validated
+     * @param  LabRequisition|null  $requisition  the order the report answers; sets the reporting lab
      */
-    public function create(Patient $patient, CarbonInterface $collectedAt, ?string $labName, ?string $notes, array $results, User $by, ?UploadedFile $attachment = null): LabReport
+    public function create(Patient $patient, CarbonInterface $collectedAt, ?string $labName, ?string $notes, array $results, User $by, ?UploadedFile $attachment = null, ?LabRequisition $requisition = null): LabReport
     {
         // Stored before the transaction, and removed again if the report is not saved.
         $stored = $attachment ? $this->attachments->store($attachment) : [];
 
         try {
-            return DB::transaction(function () use ($patient, $collectedAt, $labName, $notes, $results, $by, $stored) {
+            return DB::transaction(function () use ($patient, $collectedAt, $labName, $notes, $results, $by, $stored, $requisition) {
                 $report = new LabReport([
                     'collected_at' => $collectedAt,
-                    'lab_name' => $this->blankToNull($labName),
+                    'lab_name' => $this->blankToNull($labName) ?? $requisition?->labPartner->name,
                     'notes' => $this->blankToNull($notes),
                 ]);
                 $report->forceFill($stored);
                 $report->patient_id = $patient->id;
+                $report->lab_partner_id = $requisition?->lab_partner_id;
+                $report->lab_requisition_id = $requisition?->id;
                 $report->entered_by = $by->id;
                 $report->save();
 
                 $this->insertResults($report, $results, $by);
+                $requisition?->markReported();
 
                 return $report;
             });

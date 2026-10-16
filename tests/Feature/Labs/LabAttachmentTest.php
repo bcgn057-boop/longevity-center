@@ -6,6 +6,7 @@ use App\Labs\LabAttachmentStore;
 use App\Labs\LabReportService;
 use App\Models\AuditLog;
 use App\Models\Biomarker;
+use App\Models\LabPartner;
 use App\Models\LabReport;
 use App\Models\Patient;
 use Database\Seeders\BiomarkerSeeder;
@@ -25,7 +26,9 @@ beforeEach(function () {
     $this->seed(BiomarkerSeeder::class);
     $this->apob = Biomarker::where('code', 'apob')->sole();
     $this->patient = Patient::factory()->create();
-    $this->lab = userWithRole(UserRole::LabStaff);
+    $this->partner = LabPartner::factory()->create();
+    $this->lab = userWithRole(UserRole::LabStaff, $this->partner);
+    $this->requisition = requisitionFor($this->patient, $this->partner);
 });
 
 /**
@@ -35,6 +38,7 @@ function reportWithAttachment(array $overrides = []): TestResponse
 {
     return test()->actingAs(test()->lab)->post(route('labs.store'), [
         'patient_id' => test()->patient->id,
+        'lab_requisition_id' => test()->requisition->id,
         'collected_date' => '2026-10-30',
         'collected_time' => '08:15',
         'results' => [['biomarker_id' => test()->apob->id, 'value' => '98.5', 'unit' => 'mg/dL']],
@@ -105,7 +109,7 @@ describe('downloading', function () {
     test('staff see the attachment on the report and can download the original', function (UserRole $role) {
         reportWithAttachment();
         $report = LabReport::sole();
-        $this->actingAs(userWithRole($role));
+        $this->actingAs(userWithRole($role, $this->partner));
 
         $this->get(route('labs.show', $report))
             ->assertInertia(fn (Assert $page) => $page

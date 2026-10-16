@@ -5,15 +5,18 @@ import {
     CalendarCheck,
     CalendarDays,
     ChartColumn,
+    ClipboardList,
     FlaskConical,
     FolderGit2,
     LayoutGrid,
     ListChecks,
+    Ruler,
     ScrollText,
     ShieldCheck,
     UserCog,
     UserRound,
     Users,
+    UsersRound,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -31,6 +34,8 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard, myProfile } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as usersIndex } from '@/routes/admin/users';
+import { index as requisitionsIndex } from '@/routes/lab-requisitions';
 import { index as labsIndex } from '@/routes/labs';
 import {
     analytics as practiceAnalytics,
@@ -39,6 +44,7 @@ import {
 import { index as auditLogs } from '@/routes/compliance/audit-logs';
 import { index as appointmentsIndex } from '@/routes/appointments';
 import { index as myAppointments } from '@/routes/my-appointments';
+import { index as myMeasurements } from '@/routes/my-measurements';
 import { index as myProtocols } from '@/routes/my-protocols';
 import { index as myResults } from '@/routes/my-results';
 import { index as patientsIndex } from '@/routes/patients';
@@ -81,6 +87,11 @@ const mainNavItems = computed<NavItem[]>(() => {
             href: labsIndex(),
             icon: FlaskConical,
         });
+        items.push({
+            title: 'Lab requisitions',
+            href: requisitionsIndex(),
+            icon: ClipboardList,
+        });
     }
 
     if (role === 'patient') {
@@ -100,6 +111,11 @@ const mainNavItems = computed<NavItem[]>(() => {
             icon: FlaskConical,
         });
         items.push({
+            title: 'My measurements',
+            href: myMeasurements(),
+            icon: Ruler,
+        });
+        items.push({
             title: 'My protocols',
             href: myProtocols(),
             icon: ListChecks,
@@ -107,6 +123,11 @@ const mainNavItems = computed<NavItem[]>(() => {
     }
 
     if (role === 'super_admin' || role === 'clinic_admin') {
+        items.push({
+            title: 'Users',
+            href: usersIndex(),
+            icon: UsersRound,
+        });
         items.push({
             title: 'Administration',
             href: adminDashboard(),

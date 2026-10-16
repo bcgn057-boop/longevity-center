@@ -7,6 +7,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Labs\LabReportService;
 use App\Models\AuditLog;
 use App\Models\Biomarker;
+use App\Models\LabPartner;
 use App\Models\LabReport;
 use App\Models\LabResult;
 use App\Models\Patient;
@@ -20,7 +21,9 @@ beforeEach(function () {
     $this->apob = Biomarker::where('code', 'apob')->sole();
     $this->hba1c = Biomarker::where('code', 'hba1c')->sole();
     $this->patient = Patient::factory()->create(['first_name' => 'Ada', 'last_name' => 'Lovelace']);
-    $this->labStaff = userWithRole(UserRole::LabStaff);
+    $this->partner = LabPartner::factory()->create();
+    $this->labStaff = userWithRole(UserRole::LabStaff, $this->partner);
+    $this->requisition = requisitionFor($this->patient, $this->partner);
     $this->doctor = userWithRole(UserRole::Doctor);
 });
 
@@ -28,6 +31,7 @@ function labPayload(array $overrides = []): array
 {
     return [
         'patient_id' => test()->patient->id,
+        'lab_requisition_id' => test()->requisition->id,
         'collected_date' => '2026-10-30',
         'collected_time' => '08:15',
         'lab_name' => 'Quest Diagnostics',
@@ -49,8 +53,8 @@ function enterReport(): LabReport
 
 describe('access', function () {
     test('lab staff and clinicians can use the lab screens', function (UserRole $role) {
-        $report = LabReport::factory()->create();
-        $this->actingAs(userWithRole($role));
+        $report = LabReport::factory()->create(['lab_partner_id' => $this->partner->id]);
+        $this->actingAs(userWithRole($role, $this->partner));
 
         $this->get(route('labs.index'))->assertOk();
         $this->get(route('labs.create'))->assertOk();
@@ -177,8 +181,8 @@ describe('entering a report', function () {
             ->and(LabResult::count())->toBe(0);
     });
 
-    test('lab staff search patients by name only, and the search is audited', function () {
-        $this->actingAs($this->labStaff)
+    test('clinicians search patients by name only, and the search is audited', function () {
+        $this->actingAs($this->doctor)
             ->withHeaders([
                 'X-Inertia' => 'true',
                 'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
@@ -192,6 +196,21 @@ describe('entering a report', function () {
 
         expect(auditEntries(AuditEvent::PatientSearched)->sole()->metadata)
             ->toBe(['context' => 'lab_entry', 'search' => 'Love', 'results' => 1]);
+    });
+
+    test('partner lab staff cannot search the patient list', function () {
+        $this->actingAs($this->labStaff)
+            ->withHeaders([
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+                'X-Inertia-Partial-Component' => 'labs/Create',
+                'X-Inertia-Partial-Data' => 'patientOptions',
+            ])
+            ->get(route('labs.create', ['patient_search' => 'Love']))
+            ->assertOk()
+            ->assertJsonPath('props.patientOptions', []);
+
+        expect(auditEntries(AuditEvent::PatientSearched))->toHaveCount(0);
     });
 });
 
@@ -215,8 +234,8 @@ describe('reviewing', function () {
     });
 
     test('clinicians start on the review queue, oldest first', function () {
-        $older = LabReport::factory()->create(['collected_at' => now()->subDays(5)]);
-        $newer = LabReport::factory()->create(['collected_at' => now()->subDay()]);
+        $older = LabReport::factory()->create(['collected_at' => now()->subDays(5), 'lab_partner_id' => $this->partner->id]);
+        $newer = LabReport::factory()->create(['collected_at' => now()->subDay(), 'lab_partner_id' => $this->partner->id]);
         LabReport::factory()->released()->create();
 
         $this->actingAs($this->doctor)
@@ -229,7 +248,8 @@ describe('reviewing', function () {
 
         $this->actingAs($this->labStaff)
             ->get(route('labs.index'))
-            ->assertInertia(fn (Assert $page) => $page->where('filters.status', 'all')->has('reports.data', 3));
+            // Only their own lab's reports: the clinic lab's released one is not theirs.
+            ->assertInertia(fn (Assert $page) => $page->where('filters.status', 'all')->has('reports.data', 2));
     });
 
     test('the list never includes values', function () {
