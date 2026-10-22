@@ -10,3 +10,4 @@ export * from './compliance';
 export * from './dashboard';
 export * from './admin';
 export * from './assessment';
+export * from './intake';

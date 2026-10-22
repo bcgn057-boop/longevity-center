@@ -9,9 +9,11 @@ use App\Models\Appointment;
 use App\Models\CareReminder;
 use App\Models\LabReport;
 use App\Models\Patient;
+use App\Models\PatientIntakeForm;
 use App\Models\ReminderDelivery;
 use App\Notifications\AppointmentReminderNotification;
 use App\Notifications\CareReminderNotification;
+use App\Notifications\IntakeFormRequestedNotification;
 use App\Notifications\LabResultsReadyNotification;
 use App\Notifications\TrackedNotification;
 use Carbon\CarbonInterface;
@@ -92,6 +94,23 @@ class ReminderDispatcher
             $report->reviewed_at,
             portalOnly: true,
             make: fn (ReminderDelivery $delivery) => new LabResultsReadyNotification($report, $delivery),
+        );
+    }
+
+    /**
+     * Ask the patient to fill in their questionnaire, with the link's token.
+     *
+     * @return array<int, ReminderDelivery>
+     */
+    public function announceIntakeForm(PatientIntakeForm $form, string $token): array
+    {
+        return $this->send(
+            $form,
+            $form->patient,
+            IntakeFormRequestedNotification::KIND,
+            $form->sent_at ?? now(),
+            portalOnly: true,
+            make: fn (ReminderDelivery $delivery) => new IntakeFormRequestedNotification($form, $token, $delivery),
         );
     }
 

@@ -44,6 +44,7 @@ import {
 import { index as auditLogs } from '@/routes/compliance/audit-logs';
 import { index as appointmentsIndex } from '@/routes/appointments';
 import { index as myAppointments } from '@/routes/my-appointments';
+import { index as myIntake } from '@/routes/my-intake';
 import { index as myMeasurements } from '@/routes/my-measurements';
 import { index as myProtocols } from '@/routes/my-protocols';
 import { index as myResults } from '@/routes/my-results';
@@ -114,6 +115,11 @@ const mainNavItems = computed<NavItem[]>(() => {
             title: 'My measurements',
             href: myMeasurements(),
             icon: Ruler,
+        });
+        items.push({
+            title: 'Health questionnaire',
+            href: myIntake(),
+            icon: ClipboardList,
         });
         items.push({
             title: 'My protocols',

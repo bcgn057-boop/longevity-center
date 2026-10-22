@@ -8,11 +8,13 @@ use App\Http\Controllers\CareReminderController;
 use App\Http\Controllers\Compliance\AnalyticsController;
 use App\Http\Controllers\Compliance\AuditLogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\IntakeController;
 use App\Http\Controllers\LabHistoryController;
 use App\Http\Controllers\LabReportController;
 use App\Http\Controllers\LabRequisitionController;
 use App\Http\Controllers\MyAppointmentController;
 use App\Http\Controllers\MyAssessmentController;
+use App\Http\Controllers\MyIntakeController;
 use App\Http\Controllers\MyLabResultsController;
 use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\NotificationController;
@@ -26,6 +28,7 @@ use App\Models\FunctionalAssessment;
 use App\Models\LabReport;
 use App\Models\LabRequisition;
 use App\Models\Patient;
+use App\Models\PatientIntakeForm;
 use App\Models\Prescription;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -198,6 +201,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('patients/{patient}/prescriptions', [PrescriptionController::class, 'index'])
             ->can('viewPrescriptions', Prescription::class)
             ->name('patients.prescriptions.index');
+        Route::post('patients/{patient}/intake/send', [IntakeController::class, 'send'])
+            ->can('manageIntake', PatientIntakeForm::class)
+            ->name('patients.intake.send');
+        Route::post('patients/{patient}/intake/start', [IntakeController::class, 'start'])
+            ->can('manageIntake', PatientIntakeForm::class)
+            ->name('patients.intake.start');
+        Route::get('intake-forms/{intakeForm}/edit', [IntakeController::class, 'edit'])
+            ->can('manageIntake', PatientIntakeForm::class)
+            ->name('intake-forms.edit');
+        Route::put('intake-forms/{intakeForm}', [IntakeController::class, 'update'])
+            ->can('manageIntake', PatientIntakeForm::class)
+            ->name('intake-forms.update');
+        Route::post('intake-forms/{intakeForm}/complete', [IntakeController::class, 'complete'])
+            ->can('manageIntake', PatientIntakeForm::class)
+            ->name('intake-forms.complete');
+        Route::put('intake-forms/{intakeForm}/clinical', [IntakeController::class, 'clinical'])
+            ->can('manageIntake', PatientIntakeForm::class)
+            ->name('intake-forms.clinical');
         Route::get('patients/{patient}/assessments', [AssessmentController::class, 'show'])
             ->can('viewAssessments', FunctionalAssessment::class)
             ->name('patients.assessments.show');
@@ -251,6 +272,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('my-protocols', [AdherenceController::class, 'index'])->name('my-protocols.index');
         Route::get('my-measurements', [MyAssessmentController::class, 'index'])->name('my-measurements.index');
+        // The emailed link: signing in first is required, as for every portal page.
+        Route::get('intake/{token}', [MyIntakeController::class, 'open'])
+            ->where('token', '[A-Za-z0-9]{48}')
+            ->name('intake.open');
+        Route::get('my-health-questionnaire', [MyIntakeController::class, 'index'])->name('my-intake.index');
+        Route::get('my-health-questionnaire/{form}', [MyIntakeController::class, 'show'])->whereNumber('form')->name('my-intake.show');
+        Route::put('my-health-questionnaire/{form}', [MyIntakeController::class, 'update'])->whereNumber('form')->name('my-intake.update');
+        Route::post('my-health-questionnaire/{form}/submit', [MyIntakeController::class, 'submit'])->whereNumber('form')->name('my-intake.submit');
         Route::post('my-measurements', [MyAssessmentController::class, 'store'])->name('my-measurements.store');
         Route::put('my-protocols/items/{item}/adherence', [AdherenceController::class, 'update'])
             ->whereNumber('item')

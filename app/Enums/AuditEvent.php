@@ -82,6 +82,13 @@ enum AuditEvent: string
     case AssessmentRecorded = 'assessment.recorded';
     case AssessmentsViewed = 'assessment.viewed';
 
+    // Intake questionnaires
+    case IntakeStarted = 'intake.started';
+    case IntakeSent = 'intake.sent';
+    case IntakeAnswered = 'intake.answered';
+    case IntakeCompleted = 'intake.completed';
+    case IntakeViewed = 'intake.viewed';
+
     // Care reminders
     case CareReminderCreated = 'care_reminder.created';
     case CareReminderCancelled = 'care_reminder.cancelled';
@@ -104,7 +111,7 @@ enum AuditEvent: string
         if (in_array($this, [
             self::PatientViewed, self::PatientSearched, self::AppointmentViewed, self::AppointmentListed,
             self::LabReportListed, self::LabReportViewed, self::LabReportAttachmentDownloaded, self::PrescriptionListed,
-            self::LabRequisitionListed, self::AssessmentsViewed,
+            self::LabRequisitionListed, self::AssessmentsViewed, self::IntakeViewed,
         ], true)) {
             return AuditCategory::PhiAccess;
         }
@@ -114,7 +121,8 @@ enum AuditEvent: string
             str_starts_with($this->value, 'auth.') => AuditCategory::Authentication,
             str_starts_with($this->value, 'user.') => AuditCategory::Account,
             str_starts_with($this->value, 'patient.'),
-            str_starts_with($this->value, 'assessment.') => AuditCategory::PatientRecords,
+            str_starts_with($this->value, 'assessment.'),
+            str_starts_with($this->value, 'intake.') => AuditCategory::PatientRecords,
             str_starts_with($this->value, 'appointment.') => AuditCategory::Appointments,
             str_starts_with($this->value, 'lab_') => AuditCategory::Labs,
             str_starts_with($this->value, 'prescription.'),

@@ -14,6 +14,8 @@ const props = defineProps<{
     requisitions: LabRequisitionRow[];
     labPartners: LabPartnerOption[];
     canOrder: boolean;
+    // Which part to show: the list, the order form, or both.
+    show?: 'list' | 'order' | 'both';
 }>();
 
 const selectClass =
@@ -52,68 +54,74 @@ function submit(): void {
 <template>
     <section class="space-y-4">
         <div>
-            <h2 class="text-base font-medium">Lab requisitions</h2>
+            <h2 class="text-base font-medium">
+                {{ show === 'order' ? 'Order tests' : 'Lab requisitions' }}
+            </h2>
             <p class="text-sm text-muted-foreground">
                 Each partner lab only sees the requisitions sent to it, and the
                 patient on them.
             </p>
         </div>
 
-        <ul
-            v-if="requisitions.length"
-            class="divide-y rounded-lg border text-sm"
-        >
-            <li
-                v-for="requisition in requisitions"
-                :key="requisition.id"
-                class="flex flex-wrap items-start justify-between gap-3 px-4 py-3"
+        <template v-if="(show ?? 'both') !== 'order'">
+            <ul
+                v-if="requisitions.length"
+                class="divide-y rounded-lg border text-sm"
             >
-                <div class="space-y-1">
-                    <div class="font-medium">
-                        {{ requisition.lab_partner.name }}:
-                        {{ requisition.tests.join(', ') }}
+                <li
+                    v-for="requisition in requisitions"
+                    :key="requisition.id"
+                    class="flex flex-wrap items-start justify-between gap-3 px-4 py-3"
+                >
+                    <div class="space-y-1">
+                        <div class="font-medium">
+                            {{ requisition.lab_partner.name }}:
+                            {{ requisition.tests.join(', ') }}
+                        </div>
+                        <div
+                            v-if="requisition.instructions"
+                            class="text-muted-foreground"
+                        >
+                            {{ requisition.instructions }}
+                        </div>
+                        <div class="text-xs text-muted-foreground">
+                            Ordered {{ requisition.ordered_at }} by
+                            {{ requisition.ordered_by ?? '—' }}
+                        </div>
                     </div>
-                    <div
-                        v-if="requisition.instructions"
-                        class="text-muted-foreground"
-                    >
-                        {{ requisition.instructions }}
+                    <div class="flex items-center gap-2">
+                        <Badge
+                            :variant="
+                                requisition.status === 'ordered'
+                                    ? 'default'
+                                    : 'secondary'
+                            "
+                        >
+                            {{ requisition.status_label }}
+                        </Badge>
+                        <Button
+                            v-if="canOrder && requisition.status === 'ordered'"
+                            size="sm"
+                            variant="ghost"
+                            :disabled="cancelForm.processing"
+                            @click="
+                                cancelForm.post(cancel(requisition.id).url, {
+                                    preserveScroll: true,
+                                })
+                            "
+                        >
+                            Cancel
+                        </Button>
                     </div>
-                    <div class="text-xs text-muted-foreground">
-                        Ordered {{ requisition.ordered_at }} by
-                        {{ requisition.ordered_by ?? '—' }}
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <Badge
-                        :variant="
-                            requisition.status === 'ordered'
-                                ? 'default'
-                                : 'secondary'
-                        "
-                    >
-                        {{ requisition.status_label }}
-                    </Badge>
-                    <Button
-                        v-if="canOrder && requisition.status === 'ordered'"
-                        size="sm"
-                        variant="ghost"
-                        :disabled="cancelForm.processing"
-                        @click="
-                            cancelForm.post(cancel(requisition.id).url, {
-                                preserveScroll: true,
-                            })
-                        "
-                    >
-                        Cancel
-                    </Button>
-                </div>
-            </li>
-        </ul>
-        <p v-else class="text-sm text-muted-foreground">No requisitions yet.</p>
+                </li>
+            </ul>
+            <p v-else class="text-sm text-muted-foreground">
+                No requisitions yet.
+            </p>
+        </template>
 
         <form
-            v-if="canOrder"
+            v-if="canOrder && (show ?? 'both') !== 'list'"
             class="space-y-3 rounded-lg border p-4"
             @submit.prevent="submit"
         >

@@ -54,6 +54,7 @@ class AssessmentController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __(':kind recorded.', ['kind' => $kind->label()])]);
 
-        return to_route('patients.assessments.show', $patient);
+        // Back to the measurements page or the patient's measurements tab.
+        return back(fallback: route('patients.assessments.show', $patient));
     }
 }

@@ -11,6 +11,7 @@ use App\WhatsApp\MetaCloudWhatsAppGateway;
 use App\WhatsApp\WhatsAppGateway;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\DevCommands;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +34,7 @@ class AppServiceProvider extends ServiceProvider
         'viewLabReports', 'viewLabReport', 'enterLabResults', 'correctLabResults', 'releaseLabReport',
         'viewPrescriptions', 'managePrescriptions',
         'viewLabRequisitions', 'viewLabRequisition', 'orderLabTests', 'cancelLabRequisition',
-        'viewAssessments', 'recordAssessment',
+        'viewAssessments', 'recordAssessment', 'manageIntake', 'viewIntake',
     ];
 
     /**
@@ -120,6 +121,10 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        if ($proxies = config('security.trusted_proxies')) {
+            TrustProxies::at($proxies);
+        }
 
         // Debug pages show code, settings and request data, which can include
         // patient information. Never in production, whatever .env says.

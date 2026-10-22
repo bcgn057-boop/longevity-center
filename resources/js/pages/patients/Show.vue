@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import ConsentCard from '@/components/ConsentCard.vue';
 import LabRequisitions from '@/components/labs/LabRequisitions.vue';
 import CareReminders from '@/components/patients/CareReminders.vue';
+import MeasurementsTab from '@/components/patients/MeasurementsTab.vue';
+import type { MeasurementsData } from '@/components/patients/MeasurementsTab.vue';
 import PatientDetails from '@/components/patients/PatientDetails.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,7 +28,6 @@ import {
 } from '@/routes/labs';
 import { destroy, edit, index } from '@/routes/patients';
 import { labHistory } from '@/routes/patients';
-import { show as assessmentsShow } from '@/routes/patients/assessments';
 import { index as prescriptionsIndex } from '@/routes/patients/prescriptions';
 import {
     destroy as unlinkAccount,
@@ -51,6 +53,9 @@ const props = defineProps<{
     labReports: LabReportSummary[] | null;
     labRequisitions: LabRequisitionRow[] | null;
     labPartners: LabPartnerOption[];
+    tab: string;
+    // Null without access; absent until the tab is first opened.
+    measurements?: MeasurementsData | null;
     can: {
         update: boolean;
         archive: boolean;
@@ -63,6 +68,7 @@ const props = defineProps<{
         viewPrescriptions: boolean;
         orderLabTests: boolean;
         viewAssessments: boolean;
+        manageIntake: boolean;
     };
 }>();
 
@@ -92,12 +98,64 @@ function submitUnlink(): void {
 function submitArchive(): void {
     archiveForm.delete(destroy(props.patient.id).url);
 }
+
+const tabs = computed(() =>
+    [
+        { key: 'overview', label: 'Overview', shown: true },
+        {
+            key: 'care-reminders',
+            label: 'Care reminders',
+            shown:
+                props.can.manageCareReminders && props.careReminders !== null,
+        },
+        {
+            key: 'lab-reports',
+            label: 'Lab reports',
+            shown: props.labReports !== null,
+        },
+        {
+            key: 'lab-requisitions',
+            label: 'Lab requisitions',
+            shown: props.labRequisitions !== null,
+        },
+        {
+            key: 'order-tests',
+            label: 'Order tests',
+            shown: props.can.orderLabTests,
+        },
+        {
+            key: 'measurements',
+            label: 'Measurements & functional tests',
+            shown: props.can.viewAssessments,
+        },
+    ].filter((tab) => tab.shown),
+);
+
+const active = ref(
+    tabs.value.some((tab) => tab.key === props.tab) ? props.tab : 'overview',
+);
+
+// Measurements load (and are audited) the first time the tab opens; the
+// other tabs switch in the browser. The URL keeps the tab for sharing.
+function selectTab(key: string): void {
+    active.value = key;
+
+    if (key === 'measurements' && props.measurements === undefined) {
+        router.reload({ only: ['measurements'], data: { tab: key } });
+
+        return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', key);
+    window.history.replaceState(window.history.state, '', url);
+}
 </script>
 
 <template>
     <Head :title="patient.full_name" />
 
-    <div class="flex h-full max-w-4xl flex-1 flex-col gap-8 p-4">
+    <div class="flex h-full max-w-5xl flex-1 flex-col gap-8 p-4">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-xl font-semibold">{{ patient.full_name }}</h1>
@@ -124,11 +182,6 @@ function submitArchive(): void {
                     >
                         Book appointment
                     </Link>
-                </Button>
-                <Button v-if="can.viewAssessments" variant="outline" as-child>
-                    <Link :href="assessmentsShow(patient.id)"
-                        >Measurements</Link
-                    >
                 </Button>
                 <Button v-if="can.viewPrescriptions" variant="outline" as-child>
                     <Link :href="prescriptionsIndex(patient.id)">
@@ -171,159 +224,251 @@ function submitArchive(): void {
             </div>
         </div>
 
-        <PatientDetails :patient="patient" />
-
-        <section
-            v-if="can.manageConsent && consent && consent.length"
-            class="space-y-3"
+        <nav
+            class="-mb-4 flex gap-1 overflow-x-auto border-b"
+            role="tablist"
+            aria-label="Patient record"
         >
-            <div>
-                <h2 class="text-base font-medium">Reminder consent</h2>
-                <p class="text-sm text-muted-foreground">
-                    In-app reminders need no consent. Email and WhatsApp are
-                    only used once the patient agrees.
-                </p>
-            </div>
-            <ConsentCard
-                v-for="channel in consent"
-                :key="channel.channel"
-                :consent="channel"
-                :grant-url="
-                    recordConsent({
-                        patient: patient.id,
-                        channel: channel.channel,
-                    }).url
+            <button
+                v-for="tab in tabs"
+                :id="`tab-${tab.key}`"
+                :key="tab.key"
+                type="button"
+                role="tab"
+                :aria-selected="active === tab.key"
+                :aria-controls="`panel-${tab.key}`"
+                class="-mb-px border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                :class="
+                    active === tab.key
+                        ? 'border-primary font-medium text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
                 "
-                :withdraw-url="
-                    withdrawConsent({
-                        patient: patient.id,
-                        channel: channel.channel,
-                    }).url
-                "
-                field="confirmed"
-                intro="Read this to the patient and record their answer:"
-                checkbox-label="The patient has agreed to this wording."
-            />
-        </section>
-
-        <section v-if="labReports" class="space-y-3">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <h2 class="text-base font-medium">Lab reports</h2>
-                <Button
-                    v-if="can.orderLabTests && labReports.length"
-                    variant="outline"
-                    size="sm"
-                    as-child
-                >
-                    <Link :href="labHistory(patient.id)">
-                        All labs side by side
-                    </Link>
-                </Button>
-                <Button
-                    v-if="can.addLabReport"
-                    variant="outline"
-                    size="sm"
-                    as-child
-                >
-                    <Link
-                        :href="
-                            createLabReport({
-                                query: { patient_id: patient.id },
-                            })
-                        "
-                    >
-                        Add lab report
-                    </Link>
-                </Button>
-            </div>
-            <p
-                v-if="labReports.length === 0"
-                class="text-sm text-muted-foreground"
+                @click="selectTab(tab.key)"
             >
-                No lab reports yet.
-            </p>
-            <ul v-else class="divide-y rounded-lg border text-sm">
-                <li
-                    v-for="report in labReports"
-                    :key="report.id"
-                    class="flex flex-wrap items-center justify-between gap-3 px-4 py-2"
-                >
-                    <Link
-                        :href="showLabReport(report.id)"
-                        class="font-medium underline-offset-4 hover:underline"
-                    >
-                        {{ report.collected }}
-                    </Link>
-                    <span class="text-muted-foreground">
-                        {{ report.source }} · {{ report.results_count }} results
-                        ·
-                        {{ report.status_label }}
-                    </span>
-                </li>
-            </ul>
-        </section>
+                {{ tab.label }}
+            </button>
+        </nav>
 
-        <LabRequisitions
-            v-if="labRequisitions"
-            :patient-id="patient.id"
-            :requisitions="labRequisitions"
-            :lab-partners="labPartners"
-            :can-order="can.orderLabTests"
-        />
+        <div
+            v-show="active === 'overview'"
+            id="panel-overview"
+            role="tabpanel"
+            aria-labelledby="tab-overview"
+            class="space-y-8"
+        >
+            <PatientDetails :patient="patient" />
 
-        <CareReminders
-            v-if="can.manageCareReminders && careReminders"
-            :patient-id="patient.id"
-            :reminders="careReminders"
-            :has-account="patient.account !== null"
-        />
-
-        <section v-if="can.linkAccount" class="space-y-3">
-            <h2 class="text-base font-medium">Patient portal account</h2>
-
-            <div
-                v-if="patient.account"
-                class="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 text-sm"
+            <section
+                v-if="can.manageConsent && consent && consent.length"
+                class="space-y-3"
             >
                 <div>
-                    Linked to
-                    <span class="font-medium">{{ patient.account.name }}</span>
-                    ({{ patient.account.email }})
+                    <h2 class="text-base font-medium">Reminder consent</h2>
+                    <p class="text-sm text-muted-foreground">
+                        In-app reminders need no consent. Email and WhatsApp are
+                        only used once the patient agrees.
+                    </p>
                 </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    :disabled="unlinkForm.processing"
-                    @click="submitUnlink"
-                >
-                    Unlink
-                </Button>
-            </div>
+                <ConsentCard
+                    v-for="channel in consent"
+                    :key="channel.channel"
+                    :consent="channel"
+                    :grant-url="
+                        recordConsent({
+                            patient: patient.id,
+                            channel: channel.channel,
+                        }).url
+                    "
+                    :withdraw-url="
+                        withdrawConsent({
+                            patient: patient.id,
+                            channel: channel.channel,
+                        }).url
+                    "
+                    field="confirmed"
+                    intro="Read this to the patient and record their answer:"
+                    checkbox-label="The patient has agreed to this wording."
+                />
+            </section>
+        </div>
 
-            <form
-                v-else
-                class="flex flex-wrap items-end gap-3"
-                @submit.prevent="submitLink"
-            >
-                <div class="grid gap-1.5">
-                    <Label for="link-email">Account email</Label>
-                    <Input
-                        id="link-email"
-                        v-model="linkForm.email"
-                        type="email"
-                        required
-                        class="w-72"
-                    />
-                    <InputError :message="linkForm.errors.email" />
+        <div
+            v-if="labReports"
+            v-show="active === 'lab-reports'"
+            id="panel-lab-reports"
+            role="tabpanel"
+            aria-labelledby="tab-lab-reports"
+        >
+            <section class="space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h2 class="text-base font-medium">Lab reports</h2>
+                    <Button
+                        v-if="can.orderLabTests && labReports.length"
+                        variant="outline"
+                        size="sm"
+                        as-child
+                    >
+                        <Link :href="labHistory(patient.id)">
+                            All labs side by side
+                        </Link>
+                    </Button>
+                    <Button
+                        v-if="can.addLabReport"
+                        variant="outline"
+                        size="sm"
+                        as-child
+                    >
+                        <Link
+                            :href="
+                                createLabReport({
+                                    query: { patient_id: patient.id },
+                                })
+                            "
+                        >
+                            Add lab report
+                        </Link>
+                    </Button>
                 </div>
-                <Button type="submit" :disabled="linkForm.processing">
-                    Link account
-                </Button>
-                <p class="w-full text-xs text-muted-foreground">
-                    The account must have the Patient role and a verified email
-                    address.
+                <p
+                    v-if="labReports.length === 0"
+                    class="text-sm text-muted-foreground"
+                >
+                    No lab reports yet.
                 </p>
-            </form>
-        </section>
+                <ul v-else class="divide-y rounded-lg border text-sm">
+                    <li
+                        v-for="report in labReports"
+                        :key="report.id"
+                        class="flex flex-wrap items-center justify-between gap-3 px-4 py-2"
+                    >
+                        <Link
+                            :href="showLabReport(report.id)"
+                            class="font-medium underline-offset-4 hover:underline"
+                        >
+                            {{ report.collected }}
+                        </Link>
+                        <span class="text-muted-foreground">
+                            {{ report.source }} ·
+                            {{ report.results_count }} results ·
+                            {{ report.status_label }}
+                        </span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+
+        <div
+            v-if="labRequisitions"
+            v-show="active === 'lab-requisitions'"
+            id="panel-lab-requisitions"
+            role="tabpanel"
+            aria-labelledby="tab-lab-requisitions"
+        >
+            <LabRequisitions
+                :patient-id="patient.id"
+                :requisitions="labRequisitions"
+                :lab-partners="labPartners"
+                :can-order="can.orderLabTests"
+                show="list"
+            />
+        </div>
+
+        <div
+            v-if="can.orderLabTests && labRequisitions"
+            v-show="active === 'order-tests'"
+            id="panel-order-tests"
+            role="tabpanel"
+            aria-labelledby="tab-order-tests"
+        >
+            <LabRequisitions
+                :patient-id="patient.id"
+                :requisitions="labRequisitions"
+                :lab-partners="labPartners"
+                :can-order="can.orderLabTests"
+                show="order"
+            />
+        </div>
+
+        <div
+            v-if="can.manageCareReminders && careReminders"
+            v-show="active === 'care-reminders'"
+            id="panel-care-reminders"
+            role="tabpanel"
+            aria-labelledby="tab-care-reminders"
+        >
+            <CareReminders
+                :patient-id="patient.id"
+                :reminders="careReminders"
+                :has-account="patient.account !== null"
+            />
+        </div>
+
+        <div
+            v-if="can.viewAssessments"
+            v-show="active === 'measurements'"
+            id="panel-measurements"
+            role="tabpanel"
+            aria-labelledby="tab-measurements"
+        >
+            <MeasurementsTab
+                v-if="measurements"
+                :patient-id="patient.id"
+                :data="measurements"
+                :can-manage-intake="can.manageIntake"
+            />
+            <p v-else class="text-sm text-muted-foreground">Loading…</p>
+        </div>
+
+        <div v-show="active === 'overview'" class="space-y-8">
+            <section v-if="can.linkAccount" class="space-y-3">
+                <h2 class="text-base font-medium">Patient portal account</h2>
+
+                <div
+                    v-if="patient.account"
+                    class="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 text-sm"
+                >
+                    <div>
+                        Linked to
+                        <span class="font-medium">{{
+                            patient.account.name
+                        }}</span>
+                        ({{ patient.account.email }})
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :disabled="unlinkForm.processing"
+                        @click="submitUnlink"
+                    >
+                        Unlink
+                    </Button>
+                </div>
+
+                <form
+                    v-else
+                    class="flex flex-wrap items-end gap-3"
+                    @submit.prevent="submitLink"
+                >
+                    <div class="grid gap-1.5">
+                        <Label for="link-email">Account email</Label>
+                        <Input
+                            id="link-email"
+                            v-model="linkForm.email"
+                            type="email"
+                            required
+                            class="w-72"
+                        />
+                        <InputError :message="linkForm.errors.email" />
+                    </div>
+                    <Button type="submit" :disabled="linkForm.processing">
+                        Link account
+                    </Button>
+                    <p class="w-full text-xs text-muted-foreground">
+                        The account must have the Patient role and a verified
+                        email address.
+                    </p>
+                </form>
+            </section>
+        </div>
     </div>
 </template>

@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Assessments\AssessmentPresenter;
 use App\Enums\AuditEvent;
 use App\Enums\Sex;
 use App\Http\Requests\Patients\StorePatientRequest;
 use App\Http\Requests\Patients\UpdatePatientRequest;
 use App\Http\Resources\PatientResource;
+use App\Intake\IntakePresenter;
 use App\Labs\LabPresenter;
 use App\Labs\LabRequisitionPresenter;
 use App\Models\Appointment;
@@ -17,14 +19,17 @@ use App\Models\LabPartner;
 use App\Models\LabReport;
 use App\Models\LabRequisition;
 use App\Models\Patient;
+use App\Models\PatientIntakeForm;
 use App\Models\Prescription;
 use App\Reminders\NotificationConsent;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Inertia\Support\Header;
 
 /**
  * Staff management of patient records. Authorization is enforced on the
@@ -33,6 +38,13 @@ use Inertia\Response;
  */
 class PatientController extends Controller
 {
+    /**
+     * The tabs of the patient workspace.
+     *
+     * @var array<int, string>
+     */
+    public const TABS = ['overview', 'care-reminders', 'lab-reports', 'lab-requisitions', 'order-tests', 'measurements'];
+
     public function __construct(private readonly AuditLogger $audit) {}
 
     public function index(Request $request): Response
@@ -97,9 +109,19 @@ class PatientController extends Controller
 
     public function show(Request $request, Patient $patient, NotificationConsent $consent): Response
     {
-        $this->recordView($request, $patient, 'show');
+        $tab = $request->validate(['tab' => ['nullable', Rule::in(self::TABS)]])['tab'] ?? 'overview';
+
+        // Opening the measurements tab reloads only that tab's data, which
+        // is audited on its own; it discloses nothing else from the record.
+        $onlyMeasurements = $request->header(Header::PARTIAL_COMPONENT) === 'patients/Show'
+            && $request->header(Header::PARTIAL_ONLY) === 'measurements';
+
+        if (! $onlyMeasurements) {
+            $this->recordView($request, $patient, 'show');
+        }
 
         $user = $request->user();
+        $measurements = fn () => $this->measurements($request, $patient);
         $canManageConsent = (bool) $user?->can('manageConsent', $patient);
         $canManageCareReminders = (bool) $user?->can('manageCareReminders', $patient);
 
@@ -108,6 +130,11 @@ class PatientController extends Controller
             'consent' => $canManageConsent ? $consent->summary($patient) : null,
             'careReminders' => $canManageCareReminders ? $this->careReminders($patient) : null,
             'labReports' => $user?->can('viewLabReports', LabReport::class) ? $this->labReports($patient) : null,
+            'tab' => $tab,
+            // Loaded when the tab is opened.
+            'measurements' => ! $user?->can('viewAssessments', FunctionalAssessment::class)
+                ? null
+                : ($tab === 'measurements' ? $measurements : Inertia::optional($measurements)),
             'labRequisitions' => $user?->can('orderLabTests', LabRequisition::class) ? $this->labRequisitions($patient) : null,
             'labPartners' => $user?->can('orderLabTests', LabRequisition::class)
                 ? LabPartner::query()->active()->orderBy('name')->get()->map->toOption()->all()
@@ -121,6 +148,7 @@ class PatientController extends Controller
                 'manageConsent' => $canManageConsent,
                 'manageCareReminders' => $canManageCareReminders,
                 'addLabReport' => ! $patient->trashed() && (bool) $user?->can('enterLabResults', LabReport::class),
+                'manageIntake' => ! $patient->trashed() && (bool) $user?->can('manageIntake', PatientIntakeForm::class),
                 'viewAssessments' => (bool) $user?->can('viewAssessments', FunctionalAssessment::class),
                 'orderLabTests' => ! $patient->trashed() && (bool) $user?->can('orderLabTests', LabRequisition::class),
                 'viewPrescriptions' => ! $patient->trashed() && (bool) $user?->can('viewPrescriptions', Prescription::class),
@@ -213,6 +241,42 @@ class PatientController extends Controller
             ->get()
             ->map(fn (LabReport $report) => LabPresenter::summary($report))
             ->all();
+    }
+
+    /**
+     * The measurements tab: measurements and functional tests, and the
+     * intake questionnaire. Audited when loaded.
+     *
+     * @return array<string, mixed>
+     */
+    private function measurements(Request $request, Patient $patient): array
+    {
+        $assessments = $patient->assessments()->with('recorder:id,name')->get();
+        $forms = $patient->intakeForms()->with('doctor:id,name')->get();
+        $current = $forms->first();
+
+        $this->audit->record(AuditEvent::AssessmentsViewed, auditable: $patient, metadata: ['context' => 'patient_tab', 'results' => $assessments->count()]);
+
+        if ($current instanceof PatientIntakeForm) {
+            $this->audit->record(AuditEvent::IntakeViewed, auditable: $current, metadata: ['patient_id' => $patient->id]);
+        }
+
+        return [
+            'forms' => AssessmentPresenter::forms(),
+            'latest' => AssessmentPresenter::latest($assessments),
+            'history' => AssessmentPresenter::history($assessments, showRecorder: true),
+            'today' => now((string) config('clinic.timezone'))->toDateString(),
+            'intake' => [
+                'current' => $current ? IntakePresenter::form($current) : null,
+                'previous' => $forms->skip(1)->map(fn (PatientIntakeForm $form) => [
+                    'id' => $form->id,
+                    'status_label' => $form->status->label(),
+                    'submitted_at' => $form->submitted_at?->copy()->setTimezone((string) config('clinic.timezone'))->format('D j M Y'),
+                ])->values()->all(),
+                'schema' => IntakePresenter::schema(),
+                'hasPortalAccount' => $patient->user_id !== null,
+            ],
+        ];
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Models\Appointment;
 use App\Models\CareReminder;
 use App\Models\LabReport;
+use App\Models\PatientIntakeForm;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Carbon;
@@ -31,6 +32,7 @@ class NotificationPresenter
             'clinician.daily_summary' => $this->dailySummary($notification, $user),
             'care.reminder' => $this->careReminder($notification, $user),
             'lab.results_released' => $this->labResults($notification, $user),
+            'intake.requested' => $this->intakeRequested($notification, $user),
             default => [__('Notification'), null, null],
         };
 
@@ -129,6 +131,23 @@ class NotificationPresenter
         ]);
 
         return [__('New lab results'), $body, route('my-results.show', $report)];
+    }
+
+    /**
+     * @return array{0: string, 1: string|null, 2: string|null}
+     */
+    private function intakeRequested(DatabaseNotification $notification, User $user): array
+    {
+        $id = $notification->data['intake_form_id'] ?? null;
+        $form = is_int($id) ? PatientIntakeForm::find($id) : null;
+
+        if ($form === null || $form->patient->user_id !== $user->id) {
+            return [__('Health questionnaire'), __('This questionnaire is no longer available.'), null];
+        }
+
+        return $form->isWithPatient()
+            ? [__('Please complete your health questionnaire'), __('Your clinic has asked you to fill it in before your next visit.'), route('my-intake.show', $form)]
+            : [__('Health questionnaire'), __('Thank you, this questionnaire is complete.'), route('my-intake.show', $form)];
     }
 
     private function timezone(): string

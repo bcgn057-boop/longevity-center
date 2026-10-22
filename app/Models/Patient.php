@@ -112,6 +112,16 @@ class Patient extends Model implements ReceivesReminders
     }
 
     /**
+     * Get the patient's intake questionnaires, newest first.
+     *
+     * @return HasMany<PatientIntakeForm, $this>
+     */
+    public function intakeForms(): HasMany
+    {
+        return $this->hasMany(PatientIntakeForm::class)->latest('id');
+    }
+
+    /**
      * Get the patient's measurements and functional tests, newest first.
      *
      * @return HasMany<FunctionalAssessment, $this>
